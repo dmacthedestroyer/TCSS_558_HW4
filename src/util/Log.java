@@ -1,4 +1,4 @@
-package chord;
+package util;
 /*
  * Spring 2013 TCSS 558 - Applied Distributed Computing
  * Institute of Technology, UW Tacoma

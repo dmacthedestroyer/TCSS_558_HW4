@@ -19,7 +19,7 @@ public class MultiRandomNodeTest {
 
 	public static void main(String[] args) throws AlreadyBoundException, IOException {
         if (args.length != 3) {
-            Log.err("Usage: RMIController <port> <m> <node count>");
+            Log.err("Usage: MultiRandomNodeTest <port> <m> <node count>");
         } else {
             int port = Integer.parseInt(args[0]);
 			int m = Integer.parseInt(args[1]);
@@ -43,6 +43,7 @@ public class MultiRandomNodeTest {
 			
 			for(int i=0; i<nodeCount; i++){
 				RMINode nodeI = new RMINode(m, randoms.next());
+				Log.out("" + nodeI.getNodeKey());
 				registry.bind("" + nodeI.getNodeKey(), UnicastRemoteObject.exportObject(nodeI, 0));
 				
 				RMINodeServer fromNetwork = null;

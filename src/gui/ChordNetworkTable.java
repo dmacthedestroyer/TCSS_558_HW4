@@ -1,49 +1,53 @@
 package gui;
 
-import java.awt.Dimension;
-import java.awt.GridLayout;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import javax.swing.table.DefaultTableModel;
 
 import chord.NodeState;
 
-public class ChordNetworkTable extends JPanel {
+public class ChordNetworkTable extends JTable{
+
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -8601345570257078826L;
 
 	public void update(List<NodeState> networkState) {
-		this.removeAll();
-
 		if (networkState.size() == 0)
 			return;
 
-		String[] columns = initializeColumns(networkState.get(0).getFingers().length);
-		Object[][] data = new Object[networkState.size()][columns.length];
+		DefaultTableModel tableModel = ((DefaultTableModel) getModel());
+		String[] columns = initializeColumns(networkState.get(0).getFingers().size());
+		tableModel.setColumnIdentifiers(columns);
+		tableModel.setRowCount(0);
+
 		for (int i = 0; i < networkState.size(); i++) {
 			NodeState node = networkState.get(i);
 			Object[] row = new Object[columns.length];
 			row[0] = node.getKey();
 			row[1] = node.getPredecessor();
 			for (int k = 0; k < columns.length - 3; k++)
-				row[k + 2] = node.getFingers()[k];
+				row[k + 2] = node.getFingers().get(k);
 			row[columns.length - 1] = node.getValueCount();
+
+			tableModel.addRow(row);
 		}
-
-		JTable table = new JTable(data, columns);
-		table.setPreferredScrollableViewportSize(new Dimension(500, 70));
-		table.setFillsViewportHeight(true);
-
-		this.add(new JScrollPane(table));
 	}
 
 	public ChordNetworkTable() {
-		super(new GridLayout(1, 0));
+		super();
 
 		update(new ArrayList<NodeState>() {
+			/**
+			 * 
+			 */
+			private static final long serialVersionUID = 6368136066303131409L;
+
 			{
-				add(new NodeState(0, 0, new long[3], 0));
+				add(new NodeState(0, 0, new ArrayList<Long>(), 0));
 			}
 		});
 	}

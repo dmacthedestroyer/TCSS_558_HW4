@@ -1,12 +1,29 @@
 package gui;
 
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
+import java.awt.BorderLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.Timer;
+
+import chord.NodeState;
+import chord.RMINodeState;
 
 public class Main extends JPanel {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 967889003587846649L;
+
 	/**
 	 * Create the GUI and show it. For thread safety, this method should be
 	 * invoked from the event-dispatching thread.
@@ -20,6 +37,7 @@ public class Main extends JPanel {
 			break;
 		case 1:
 			port = Integer.parseInt(args[0]);
+			break;
 		case 2:
 			host = args[0];
 			port = Integer.parseInt(args[1]);
@@ -53,28 +71,66 @@ public class Main extends JPanel {
 		});
 	}
 
-	private ChordNetworkTable chordNetworkTable;
+	private String host;
+	private int port;
+	private ChordNetworkTable chordNetworkTable = new ChordNetworkTable();
+
+	private Timer poller = new Timer(1000, new ActionListener() {
+
+		@Override
+		public void actionPerformed(ActionEvent arg0) {
+			chordNetworkTable.update(getNetworkState());
+		}
+	});
 
 	public Main(String host, int port) {
-		add((chordNetworkTable = new ChordNetworkTable()));
+		this.host = host;
+		this.port = port;
 
-		pollRegistry();
+		add(new JScrollPane(chordNetworkTable));
+
+		poller.start();
 	}
 
-	private void pollRegistry() {
-		new Thread(new Runnable() {
-			@Override
-			public void run() {
-				while (true)
-					try {
-						Thread.sleep(500);
-						System.out.println("polling the stuff");
-					} catch (Exception e) {
-						e.printStackTrace();
-						
-						return;
-					}
+	private List<NodeState> getNetworkState() {
+		Registry registry;
+		try {
+			System.out.print("locating registry...   ");
+			registry = LocateRegistry.getRegistry(host, port);
+			System.out.println("done.");
+		} catch (RemoteException e) {
+			e.printStackTrace();
+			return new ArrayList<NodeState>();
+		}
+
+		try {
+			ArrayList<NodeState> states = new ArrayList<>();
+			System.out.print("acquiring node names...   ");
+			String[] names = registry.list();
+			System.out.println(names.length + " nodes found.");
+			for (String name : names) {
+				try {
+					RMINodeState state = (RMINodeState) registry.lookup(name);
+					states.add(state.getState());
+				} catch (RemoteException re) {
+					registry.unbind(name);
+
+					System.out.println("bad registry entry found at id " + name);
+					re.printStackTrace();
+				}
 			}
-		}).start();
+
+			java.util.Collections.sort(states, new Comparator<NodeState>() {
+				@Override
+				public int compare(NodeState o1, NodeState o2) {
+					return (int) (o1.getKey() - o2.getKey());
+				}
+			});
+
+			return states;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
 	}
 }

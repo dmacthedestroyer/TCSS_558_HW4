@@ -1,11 +1,14 @@
 package chord;
 
-public class NodeState {
+import java.io.Serializable;
+import java.util.List;
+
+public class NodeState implements Serializable {
 
 	private long key, predecessor, valueCount;
-	private long[] fingers;
+	private List<Long> fingers;
 
-	public NodeState(long key, long predecessor, long[] fingers, long valueCount) {
+	public NodeState(long key, long predecessor, List<Long> fingers, long valueCount) {
 		this.key = key;
 		this.predecessor = predecessor;
 		this.fingers = fingers;
@@ -20,7 +23,7 @@ public class NodeState {
 		return predecessor;
 	}
 
-	public long[] getFingers() {
+	public List<Long> getFingers() {
 		return fingers;
 	}
 

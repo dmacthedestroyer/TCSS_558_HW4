@@ -1,5 +1,8 @@
 package gui;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 
@@ -50,7 +53,28 @@ public class Main extends JPanel {
 		});
 	}
 
+	private ChordNetworkTable chordNetworkTable;
+
 	public Main(String host, int port) {
-		add(new ChordNetworkTable());
+		add((chordNetworkTable = new ChordNetworkTable()));
+
+		pollRegistry();
+	}
+
+	private void pollRegistry() {
+		new Thread(new Runnable() {
+			@Override
+			public void run() {
+				while (true)
+					try {
+						Thread.sleep(500);
+						System.out.println("polling the stuff");
+					} catch (Exception e) {
+						e.printStackTrace();
+						
+						return;
+					}
+			}
+		}).start();
 	}
 }

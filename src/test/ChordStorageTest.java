@@ -13,7 +13,6 @@ import org.junit.Test;
 
 import chord.RMINodeClient;
 import util.GenerateMultiNodeNetwork;
-import util.MultiRandomNodeTest;
 
 /**
  * Tests the storage functions of the Chord network.
@@ -44,8 +43,14 @@ public class ChordStorageTest {
 	}
 
 	@Test
-	public void testDelete() {
-		fail("Not yet implemented");
+	public void testDelete() throws RemoteException, NotBoundException {
+		RMINodeClient client = (RMINodeClient) registry.lookup("node0");
+		String key = "testKey";
+		String value = "testValue";
+		client.put(key, value);
+		client.delete(key);
+		String getValue = (String) client.get(key);
+		assertEquals(null, getValue);
 	}
 
 }

@@ -7,8 +7,6 @@ import java.util.Comparator;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 import util.Log;
 
 /**
@@ -232,10 +230,11 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	@Override
 	public void delete(String key) throws RemoteException {
 		long hash = new KeyHash<String>(key, getHashLength()).getHash();
-		if(isInRange(hash))
-			throw new NotImplementedException();
-
-		findSuccessor(hash).delete(key);
+		if(isInRange(hash)) {
+			nodeMap.remove(hash);
+		} else {
+			findSuccessor(hash).delete(key);
+		}
 	}
 
 	/**

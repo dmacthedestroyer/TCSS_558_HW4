@@ -1,5 +1,6 @@
 package util;
 import java.io.IOException;
+
 import java.rmi.NotBoundException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -7,6 +8,7 @@ import java.rmi.server.UnicastRemoteObject;
 
 import chord.RMINode;
 import chord.RMINodeServer;
+
 /**
  * A class for starting the network. Presently useful for testing.
  * @author dmac
@@ -31,7 +33,7 @@ public class JoinNode {
 		RMINodeServer fromNetwork = (RMINodeServer) fakeDNS.lookup(nodeKey);
 
 		RMINode node = new RMINode(fromNetwork.getHashLength(), newNodeKey);
-		fakeDNS.rebind("" + node.getNodeKey(),
+		fakeDNS.rebind("node" + node.getNodeKey(),
 				UnicastRemoteObject.exportObject(node, 0));
 
 		node.join(fromNetwork);

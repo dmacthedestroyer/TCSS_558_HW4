@@ -1,6 +1,7 @@
 package chord;
 import java.io.Serializable;
 import java.rmi.RemoteException;
+import java.util.HashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -29,6 +30,11 @@ public class RMINode implements RMINodeServer {
 	 * The finger table for this node.
 	 */
 	private FingerTable fingerTable;
+	
+	/**
+	 * The storage structure for this node.
+	 */
+	private HashMap<Long, Serializable> nodeMap;
 	
 	/**
 	 * The node's predecessor.
@@ -77,6 +83,7 @@ public class RMINode implements RMINodeServer {
 		this.nodeKey = key;
 		fingerTable = new FingerTable(this);
 		logger = new NodeFileLogger(key);
+		nodeMap = new HashMap<>();
 	}
 
 	/**
@@ -189,9 +196,10 @@ public class RMINode implements RMINodeServer {
 	@Override
 	public Serializable get(String key) throws RemoteException {
 		long hash = new KeyHash<String>(key, getHashLength()).getHash();
-		if(isInRange(hash))
-			throw new NotImplementedException();
-
+		if(isInRange(hash)) {
+			Serializable value = nodeMap.get(hash);
+			return value;
+		} 
 		return findSuccessor(hash).get(key);
 	}
 
@@ -201,10 +209,11 @@ public class RMINode implements RMINodeServer {
 	@Override
 	public void put(String key, Serializable value) throws RemoteException {
 		long hash = new KeyHash<String>(key, getHashLength()).getHash();
-		if(isInRange(hash))
-			throw new NotImplementedException();
-		
-		findSuccessor(hash).put(key, value);
+		if(isInRange(hash)) {
+			nodeMap.put(hash, value);
+		} else {
+			findSuccessor(hash).put(key, value);
+		}
 	}
 
 	/**

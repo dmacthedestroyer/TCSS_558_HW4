@@ -36,7 +36,7 @@ public class BootstrapNode {
 			
 			Registry fakeDNS = LocateRegistry.getRegistry(registryHostname, registryPort);
 			RMINode node = new RMINode(m, nodeKey);
-			fakeDNS.rebind("" + node.getNodeKey(), UnicastRemoteObject.exportObject(node, 0));
+			fakeDNS.rebind("node" + node.getNodeKey(), UnicastRemoteObject.exportObject(node, 0));
 			node.join(null);
 			
 			Log.out("seeded new chord network with node id " + node.getNodeKey());

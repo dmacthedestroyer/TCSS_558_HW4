@@ -12,6 +12,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import chord.RMINodeClient;
+import util.GenerateMultiNodeNetwork;
 import util.MultiRandomNodeTest;
 
 /**
@@ -28,23 +29,18 @@ public class ChordStorageTest {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		String[] args = {"1337", "32", "4"};
-		MultiRandomNodeTest.main(args);
+		GenerateMultiNodeNetwork.main(args);
 		registry = LocateRegistry.getRegistry(1337);
 	}
 
 	@Test
-	public void testGet() throws AccessException, RemoteException, NotBoundException {
-		RMINodeClient client = (RMINodeClient) registry.lookup("3029234162");
+	public void testGetAndPut() throws AccessException, RemoteException, NotBoundException {
+		RMINodeClient client = (RMINodeClient) registry.lookup("node0");
 		String key = "testKey";
 		String value = "testValue";
 		client.put(key, value);
 		String getValue = (String) client.get(key);
 		assertEquals(value, getValue);
-	}
-
-	@Test
-	public void testPut() {
-		fail("Not yet implemented");
 	}
 
 	@Test

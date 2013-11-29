@@ -41,6 +41,18 @@ public class ChordStorageTest {
 		String getValue = (String) client.get(key);
 		assertEquals(value, getValue);
 	}
+	
+	@Test
+	public void testGetAndPutWithDifferentClients() throws AccessException, RemoteException, NotBoundException {
+		RMINodeClient putClient = (RMINodeClient) registry.lookup("node0");
+		String key = "testKey";
+		String value = "testValue";
+		putClient.put(key, value);
+		RMINodeClient getClient = (RMINodeClient) registry.lookup("node1");
+		getClient.get(key);
+		String getValue = (String) putClient.get(key);
+		assertEquals(value, getValue);
+	}
 
 	@Test
 	public void testDelete() throws RemoteException, NotBoundException {
@@ -50,6 +62,18 @@ public class ChordStorageTest {
 		client.put(key, value);
 		client.delete(key);
 		String getValue = (String) client.get(key);
+		assertEquals(null, getValue);
+	}
+	
+	@Test
+	public void testDeleteWithDifferentClients() throws RemoteException, NotBoundException {
+		RMINodeClient putClient = (RMINodeClient) registry.lookup("node0");
+		String key = "testKey";
+		String value = "testValue";
+		putClient.put(key, value);
+		RMINodeClient deleteClient = (RMINodeClient) registry.lookup("node1");
+		deleteClient.delete(key);
+		String getValue = (String) putClient.get(key);
 		assertEquals(null, getValue);
 	}
 

@@ -61,19 +61,19 @@ public class NodeFileLogger {
 	 * @param message The output to log.
 	 */
 	public void logOutput(String message) {
-		// Open the file with the following options
-		try (OutputStream output = 
-				Files.newOutputStream(logfile, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND)) {
-			StringBuilder builder = new StringBuilder();
-			builder.append(DATE.format(new Date()));
-			builder.append(SEPARATOR);
-			builder.append(message);
-			builder.append(LINE_SEPARATOR);
-			String outputMessage = builder.toString();
-			output.write(outputMessage.getBytes());
-		} catch (IOException e) {
-			Log.err(e.getMessage());
-		}
+//		// Open the file with the following options
+//		try (OutputStream output = 
+//				Files.newOutputStream(logfile, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND)) {
+//			StringBuilder builder = new StringBuilder();
+//			builder.append(DATE.format(new Date()));
+//			builder.append(SEPARATOR);
+//			builder.append(message);
+//			builder.append(LINE_SEPARATOR);
+//			String outputMessage = builder.toString();
+//			output.write(outputMessage.getBytes());
+//		} catch (IOException e) {
+//			Log.err(e.getMessage());
+//		}
 	}
 	
 	/**

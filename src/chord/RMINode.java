@@ -2,6 +2,8 @@ package chord;
 import java.io.Serializable;
 import java.rmi.RemoteException;
 import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -14,7 +16,7 @@ import util.Log;
  * 
  * @author Daniel McDonald
  */
-public class RMINode implements RMINodeServer {
+public class RMINode implements RMINodeServer, RMINodeState {
 
 	/**
 	 * The key for the node.
@@ -127,7 +129,7 @@ public class RMINode implements RMINodeServer {
 					t.printStackTrace();
 				}
 			}
-		}, 5, 1, TimeUnit.SECONDS);
+		}, 500, 500, TimeUnit.MILLISECONDS);
 	}
 	
 	/**
@@ -190,6 +192,14 @@ public class RMINode implements RMINodeServer {
 	@Override
 	public int getHashLength() { return hashLength; }
 
+	public NodeState getState() throws RemoteException {
+		ArrayList<Long> fingers = new ArrayList<>();
+		for(Finger f: fingerTable)
+			fingers.add(f.getNode().getNodeKey());
+		
+		return new NodeState(getNodeKey(), predecessor.getNodeKey(), fingers, 0);
+	}
+	
 	/**
 	 * {@inheritDoc}
 	 */

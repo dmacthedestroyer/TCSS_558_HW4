@@ -204,10 +204,13 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	@Override
 	public Serializable get(String key) throws RemoteException {
 		long hash = new KeyHash<String>(key, getHashLength()).getHash();
+		logger.logOutput("Requested object with key " + hash);
 		if(isInRange(hash)) {
 			Serializable value = nodeMap.get(hash);
+			logger.logOutput("Got object with key " + hash);
 			return value;
 		} 
+		logger.logOutput("Object not found; passed request to successor with key " + hash);
 		return findSuccessor(hash).get(key);
 	}
 
@@ -217,9 +220,12 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	@Override
 	public void put(String key, Serializable value) throws RemoteException {
 		long hash = new KeyHash<String>(key, getHashLength()).getHash();
+		logger.logOutput("Requested object insert with key " + hash);
 		if(isInRange(hash)) {
+			logger.logOutput("Inserted object into storage with key " + hash);
 			nodeMap.put(hash, value);
 		} else {
+			logger.logOutput("Hashed to value at another node; passed insert request to successor");
 			findSuccessor(hash).put(key, value);
 		}
 	}
@@ -230,9 +236,12 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	@Override
 	public void delete(String key) throws RemoteException {
 		long hash = new KeyHash<String>(key, getHashLength()).getHash();
+		logger.logOutput("Requested object delete with key " + hash);
 		if(isInRange(hash)) {
+			logger.logOutput("Deleted object with key " + hash);
 			nodeMap.remove(hash);
 		} else {
+			logger.logOutput("Hashed to value at another node; passed delete request to successor");
 			findSuccessor(hash).delete(key);
 		}
 	}

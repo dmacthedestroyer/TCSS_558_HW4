@@ -42,13 +42,7 @@ public class ChordNetworkController extends JPanel {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				try {
-					RMINode node = new RMINode(Integer.parseInt(txtStartNodeM.getText()), Long.parseLong(txtStartNodeId.getText()));
-					LocateRegistry.createRegistry(port).bind("" + node.getNodeKey(), UnicastRemoteObject.exportObject(node, 0));
-					node.join(null);
-				} catch (Exception ex) {
-					ex.printStackTrace();
-				}
+				seedNetwork();
 			}
 		}));
 
@@ -88,6 +82,11 @@ public class ChordNetworkController extends JPanel {
 				removeNode();
 			}
 		}));
+
+		txtStartNodeId.setText("0");
+		txtStartNodeM.setText("3");
+		seedNetwork();
+		txtAddNodeId.grabFocus();
 	}
 
 	private RMINodeServer getRandomNode() {
@@ -101,6 +100,16 @@ public class ChordNetworkController extends JPanel {
 		}
 	}
 
+	private void seedNetwork() {
+		try {
+			RMINode node = new RMINode(Integer.parseInt(txtStartNodeM.getText()), Long.parseLong(txtStartNodeId.getText()));
+			LocateRegistry.createRegistry(port).bind("" + node.getNodeKey(), UnicastRemoteObject.exportObject(node, 0));
+			node.join(null);
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
+	}
+	
 	private void addNode() {
 		try {
 			RMINodeServer fromNetwork = getRandomNode();

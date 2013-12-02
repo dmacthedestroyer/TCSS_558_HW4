@@ -100,7 +100,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	public void join(RMINodeServer fromNetwork) throws RemoteException {
 		if (fromNetwork != null) {
 			RMINodeServer successor = fromNetwork.findSuccessor(getNodeKey());
-			if (successor.getNodeKey() == getNodeKey())
+			if (successor != null && successor.getNodeKey() == getNodeKey())
 				throw new IllegalArgumentException("A node with this key already exists in the network");
 
 			fingerTable.getSuccessor().setNode(successor);
@@ -139,6 +139,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	public void leave() throws RemoteException {
 		periodicTask.shutdown();
 		// notify everyone that should point to us that we're leaving
+		Log.out( getNodeKey() + " leaving; notifying predecessor");
 		if (predecessor != null)
 			predecessor.nodeLeaving(this);
 
@@ -146,6 +147,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 			long key = (long) (getNodeKey() - Math.pow(2, i));
 			if (key < 0)
 				key = (long) (Math.pow(2, getHashLength()) - key);
+			Log.out(getNodeKey() + " leaving: notifying successor of " + key);
 			RMINodeServer node = findSuccessor(key);
 			if (node != null)
 				node.nodeLeaving(this);
@@ -153,6 +155,9 @@ public class RMINode implements RMINodeServer, RMINodeState {
 
 		RMINodeServer successor = fingerTable.getSuccessor().getNode();
 		if (successor != null) {
+			Log.out(String.format("%s leaving: notifying successor", getNodeKey()));
+			successor.nodeLeaving(this);
+			Log.out(String.format("%s leaving: tell successor (%s) of new predecessor (%s)", getNodeKey(), successor.getNodeKey(), predecessor.getNodeKey()));
 			successor.checkPredecessor(predecessor);// tell our successor who their
 																							// new predecessor is
 
@@ -161,6 +166,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 				successor.put(key, nodeMap.remove(key));
 		}
 
+		Log.out(getNodeKey() + " leaving: null out complex data structures");
 		nodeMap = null;
 		fingerTable = null;
 	}
@@ -208,9 +214,6 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	 * @throws RemoteException
 	 */
 	private boolean isInRange(long key) throws RemoteException {
-		if (predecessor == null)
-			return false;
-
 		try {
 			// special case: if we're the only node in the network, then we're our own
 			// predecessor. That means we own the whole god-damned thing
@@ -218,7 +221,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 				return true;
 
 			return isWithinInterval(false, predecessor.getNodeKey(), key, getNodeKey(), true);
-		} catch (RemoteException e) {
+		} catch (NullPointerException | RemoteException e) {
 			predecessor = null; // if we got a remote exception, then the predecessor
 													// is no longer online
 			return false;
@@ -340,7 +343,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	@Override
 	public RMINodeServer findPredecessor(long key) throws RemoteException {
 		if (fingerTable == null)
-			throw new RemoteException();
+			return null;
 
 		// if the key belongs to our interval, then return our predecessor
 		if (isInRange(key))
@@ -349,7 +352,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		try {
 			// if the key belongs to the interval of our successor, then we're the
 			// predecessor
-			if (fingerTable.getSuccessor().getNode() != null && isWithinInterval(false, getNodeKey(), key, fingerTable.getSuccessor().getNode().getNodeKey(), true))
+			if (isWithinInterval(false, getNodeKey(), key, fingerTable.getSuccessor().getNode().getNodeKey(), true))
 				return this;
 		} catch (NullPointerException npe) {
 		}
@@ -389,11 +392,12 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		long leavingNodeKey = leavingNode.getNodeKey();
 		if (predecessor != null && predecessor.getNodeKey() == leavingNodeKey)
 			predecessor = null;
-		for (Finger f : fingerTable) {
-			RMINodeServer node = f.getNode();
-			if (node != null && node.getNodeKey() == leavingNodeKey)
-				f.setNode(null);
-		}
+		if (fingerTable != null)
+			for (Finger f : fingerTable) {
+				RMINodeServer node = f.getNode();
+				if (node != null && node.getNodeKey() == leavingNodeKey)
+					f.setNode(null);
+			}
 	}
 
 	/**

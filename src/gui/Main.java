@@ -3,7 +3,9 @@ package gui;
 import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.net.SocketException;
 import java.rmi.ConnectException;
+import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -116,6 +118,8 @@ public class Main extends JPanel {
 				}
 			} catch (ConnectException ce) {
 				return new ArrayList<NodeState>();
+			} catch (java.rmi.ConnectIOException cioe) {
+				poller.stop();
 			}
 
 			java.util.Collections.sort(states, new Comparator<NodeState>() {

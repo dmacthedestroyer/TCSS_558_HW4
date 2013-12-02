@@ -97,9 +97,7 @@ public class Main extends JPanel {
 	private List<NodeState> getNetworkState() {
 		Registry registry;
 		try {
-			System.out.print("locating registry...   ");
 			registry = LocateRegistry.getRegistry(host, port);
-			System.out.println("done.");
 		} catch (RemoteException e) {
 			e.printStackTrace();
 			return new ArrayList<NodeState>();
@@ -107,10 +105,8 @@ public class Main extends JPanel {
 
 		try {
 			ArrayList<NodeState> states = new ArrayList<>();
-			System.out.print("acquiring node names...   ");
 			try {
 				String[] names = registry.list();
-				System.out.println(names.length + " nodes found.");
 				for (String name : names) {
 					try {
 						RMINodeState state = (RMINodeState) registry.lookup(name);
@@ -118,7 +114,6 @@ public class Main extends JPanel {
 					} catch (RemoteException re) {
 						registry.unbind(name);
 
-						System.out.println("bad registry entry found at id " + name);
 						re.printStackTrace();
 					}
 				}

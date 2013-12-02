@@ -4,9 +4,12 @@ import java.rmi.RemoteException;
 import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
 import util.Log;
 
 /**
@@ -34,7 +37,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	/**
 	 * The storage structure for this node.
 	 */
-	private HashMap<Long, Serializable> nodeMap;
+	private Map<Long, Serializable> nodeMap;
 	
 	/**
 	 * The node's predecessor.
@@ -83,7 +86,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		this.nodeKey = key;
 		fingerTable = new FingerTable(this);
 		logger = new NodeFileLogger(key);
-		nodeMap = new HashMap<>();
+		nodeMap = new ConcurrentHashMap<>();
 	}
 
 	/**

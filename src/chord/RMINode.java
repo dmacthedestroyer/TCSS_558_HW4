@@ -131,6 +131,37 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		}, 500, 500, TimeUnit.MILLISECONDS);
 	}
 	
+	public void leave() throws RemoteException {
+		try {
+			periodicTask.shutdown();
+			periodicTask.awaitTermination(5, TimeUnit.SECONDS);
+		} catch (Throwable e) {
+			Log.err("error while attempting to leave network:");
+			e.printStackTrace();
+		} finally {
+			//notify everyone that should point to us that we're leaving
+			predecessor.nodeLeaving(this);
+			for(int i=0; i<getHashLength(); i++) {
+				long key = (long) (getNodeKey() - Math.pow(2, i));
+				if(key < 0)
+					key = (long) (Math.pow(2, getHashLength()) - key);
+				findSuccessor(key).nodeLeaving(this);
+			}
+				
+			
+			RMINodeServer successor = fingerTable.getSuccessor().getNode();
+			if(successor != null) {
+				successor.checkPredecessor(predecessor);//tell our successor who their new predecessor is
+				
+				for(Long key: nodeMap.keySet())//transfer all our values to our successor
+					successor.put(key, nodeMap.remove(key));
+			}
+			
+			nodeMap = null;
+			fingerTable = null;
+		}
+	}
+	
 	/**
 	 * Tests whether the key is within the given interval.
 	 * @param leftInclusive <code>true</code> if this should be left inclusive.
@@ -305,10 +336,25 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	 */
 	@Override
 	public void checkPredecessor(RMINodeServer potentialPredecessor) throws RemoteException {
-		if(predecessor == null || isWithinInterval(false, predecessor.getNodeKey(), potentialPredecessor.getNodeKey(), getNodeKey(), false)) {
+		long potentialPredecessorKey = potentialPredecessor.getNodeKey();
+		if(predecessor == null || isWithinInterval(false, predecessor.getNodeKey(), potentialPredecessorKey, getNodeKey(), false)) {
 			this.predecessor = potentialPredecessor;
-			logState(getNodeKey() + ".predecessor = " + potentialPredecessor.getNodeKey());
-		//TODO: update range, reassign values, etc
+			logState(getNodeKey() + ".predecessor = " + potentialPredecessorKey);
+			for(Long key: nodeMap.keySet())//relocate all keys that are no longer within our range to the new predecessor
+				if(isWithinInterval(false, getNodeKey(), key, potentialPredecessorKey, true))
+					potentialPredecessor.put(key, nodeMap.remove(key));
+		}
+	}
+	
+	@Override
+	public void nodeLeaving(RMINodeServer leavingNode) throws RemoteException {
+		long leavingNodeKey = leavingNode.getNodeKey();
+		if(predecessor != null && predecessor.getNodeKey() == leavingNodeKey)
+			predecessor = null;
+		for(Finger f: fingerTable){
+			RMINodeServer node = f.getNode();
+			if(node != null && node.getNodeKey() == leavingNodeKey)
+				f.setNode(null);
 		}
 	}
 	

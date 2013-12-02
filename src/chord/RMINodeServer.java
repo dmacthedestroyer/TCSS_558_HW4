@@ -7,6 +7,19 @@ import java.rmi.RemoteException;
  */
 public interface RMINodeServer extends RMINodeClient {
 	/**
+	 * entry point for joining an existing chord network
+	 * @param fromNetwork
+	 * @throws RemoteException
+	 */
+	public void join(RMINodeServer fromNetwork) throws RemoteException;
+	
+	/**
+	 * have this node leave the chord network
+	 * @throws RemoteException
+	 */
+	public void leave() throws RemoteException;
+	
+	/**
 	 * returns the log(base2) of the total number of nodes allowed in the network
 	 * @return
 	 * @throws RemoteException
@@ -61,9 +74,16 @@ public interface RMINodeServer extends RMINodeClient {
 	
 	/**
 	 * Check whether the specified node should be your predecessor
-	 * @param potentialPredecessor
+	 * @param potentialPredecessor the node which should be checked against this node's current predecessor
 	 * @return
 	 * @throws RemoteException
 	 */
 	public void checkPredecessor(RMINodeServer potentialPredecessor) throws RemoteException;
+	
+	/**
+	 * Notifies this node that the given leavingNode is exiting the network, so all references to it should be updated
+	 * @param leavingNode
+	 * @throws RemoteException
+	 */
+	public void nodeLeaving(RMINodeServer leavingNode) throws RemoteException;
 }

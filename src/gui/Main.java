@@ -3,6 +3,7 @@ package gui;
 import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.rmi.ConnectException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -84,11 +85,12 @@ public class Main extends JPanel {
 	});
 
 	public Main(String host, int port) {
+		super(new BorderLayout(15, 15));
 		this.host = host;
 		this.port = port;
 
-		add(new JScrollPane(chordNetworkTable));
-
+		add(new JScrollPane(chordNetworkTable), BorderLayout.CENTER);
+		add(new ChordNetworkController(host, port), BorderLayout.SOUTH);
 		poller.start();
 	}
 
@@ -106,18 +108,22 @@ public class Main extends JPanel {
 		try {
 			ArrayList<NodeState> states = new ArrayList<>();
 			System.out.print("acquiring node names...   ");
-			String[] names = registry.list();
-			System.out.println(names.length + " nodes found.");
-			for (String name : names) {
-				try {
-					RMINodeState state = (RMINodeState) registry.lookup(name);
-					states.add(state.getState());
-				} catch (RemoteException re) {
-					registry.unbind(name);
+			try {
+				String[] names = registry.list();
+				System.out.println(names.length + " nodes found.");
+				for (String name : names) {
+					try {
+						RMINodeState state = (RMINodeState) registry.lookup(name);
+						states.add(state.getState());
+					} catch (RemoteException re) {
+						registry.unbind(name);
 
-					System.out.println("bad registry entry found at id " + name);
-					re.printStackTrace();
+						System.out.println("bad registry entry found at id " + name);
+						re.printStackTrace();
+					}
 				}
+			} catch (ConnectException ce) {
+				return new ArrayList<NodeState>();
 			}
 
 			java.util.Collections.sort(states, new Comparator<NodeState>() {

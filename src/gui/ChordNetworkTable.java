@@ -16,7 +16,7 @@ public class ChordNetworkTable extends JTable{
 	private static final long serialVersionUID = -8601345570257078826L;
 
 	public void update(List<NodeState> networkState) {
-		if (networkState.size() == 0)
+		if (networkState == null || networkState.size() == 0)
 			return;
 
 		DefaultTableModel tableModel = ((DefaultTableModel) getModel());

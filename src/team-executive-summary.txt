@@ -13,6 +13,8 @@ Dan devised a GUI to visualize and test the state of the network so we could see
 
 We corrected some problems that we had in the previous assignment with sharing the project. For an unknown reason, our Eclipse projects produced errors when shared over git; this time we were able to address the problem early and didn't run into any further issues. We added packages as necessary to manage the increasing complexity of the network and structure our code.
 
+Dan discovered a bug from the previous homework with the way that the integer range for the size of the network was being calculated. Our previous tests had not uncovered the problem, but additional testing in this homework did. We were able to incorporate the fix into the new code and resolve the issue.
+
 Team Report
 
 We split up the work this time around with Dan working on nodes joining and exiting the network; Sven working on updating the logging functionality and updating the design doc based on our changes; and Jesse working on storage and retrieval of data in the network and drafting the executive summary. We worked remotely over the holiday and kept in communication via email. We also tracked project task updates using the Trello app. We ended up all being scattered out of town for the Thanksgiving holiday which made some of the communication difficult, but we managed reasonably well. Jesse and Sven both dealt with some illness as well.

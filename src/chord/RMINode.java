@@ -139,7 +139,6 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	public void leave() throws RemoteException {
 		periodicTask.shutdown();
 		// notify everyone that should point to us that we're leaving
-		Log.out( getNodeKey() + " leaving; notifying predecessor");
 		if (predecessor != null)
 			predecessor.nodeLeaving(this);
 
@@ -147,7 +146,6 @@ public class RMINode implements RMINodeServer, RMINodeState {
 			long key = (long) (getNodeKey() - Math.pow(2, i));
 			if (key < 0)
 				key = (long) (Math.pow(2, getHashLength()) - key);
-			Log.out(getNodeKey() + " leaving: notifying successor of " + key);
 			RMINodeServer node = findSuccessor(key);
 			if (node != null)
 				node.nodeLeaving(this);
@@ -155,9 +153,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 
 		RMINodeServer successor = fingerTable.getSuccessor().getNode();
 		if (successor != null) {
-			Log.out(String.format("%s leaving: notifying successor", getNodeKey()));
 			successor.nodeLeaving(this);
-			Log.out(String.format("%s leaving: tell successor (%s) of new predecessor (%s)", getNodeKey(), successor.getNodeKey(), predecessor.getNodeKey()));
 			successor.checkPredecessor(predecessor);// tell our successor who their
 																							// new predecessor is
 
@@ -166,7 +162,6 @@ public class RMINode implements RMINodeServer, RMINodeState {
 				successor.put(key, nodeMap.remove(key));
 		}
 
-		Log.out(getNodeKey() + " leaving: null out complex data structures");
 		nodeMap = null;
 		fingerTable = null;
 	}

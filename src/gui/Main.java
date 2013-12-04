@@ -119,6 +119,7 @@ public class Main extends JPanel {
 			} catch (ConnectException ce) {
 				return new ArrayList<NodeState>();
 			} catch (java.rmi.ConnectIOException cioe) {
+				cioe.printStackTrace();
 				poller.stop();
 			}
 

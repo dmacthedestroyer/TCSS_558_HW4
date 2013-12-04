@@ -70,7 +70,7 @@ public interface RMINodeServer extends RMINodeClient {
 	 * @return
 	 * @throws RemoteException
 	 */
-	public RMINodeServer findPredecessor(long key) throws RemoteException;
+	public RMINodeServer getPredecessor() throws RemoteException;
 	
 	/**
 	 * Check whether the specified node should be your predecessor
@@ -85,5 +85,5 @@ public interface RMINodeServer extends RMINodeClient {
 	 * @param leavingNode
 	 * @throws RemoteException
 	 */
-	public void nodeLeaving(RMINodeServer leavingNode) throws RemoteException;
+	public void nodeLeaving(long leavingNodeKey) throws RemoteException;
 }

@@ -135,8 +135,8 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	 */
 	@Override
 	public Serializable get(long key) throws RemoteException {
-		checkHasNodeLeft();
 		for (int i = 0; i < networkRetries; i++) {
+			checkHasNodeLeft();
 			try {
 				RMINodeServer server = findSuccessor(key);
 				if (nodeKey == server.getNodeKey())
@@ -153,7 +153,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 				}
 			}
 		}
-		// tried 10 times and failed, throw in the towel.
+		// tried a bunch of times and failed, throw in the towel.
 		return null;
 	}
 
@@ -170,8 +170,8 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	 */
 	@Override
 	public void put(long key, Serializable value) throws RemoteException {
-		checkHasNodeLeft();
 		for (int i = 0; i < networkRetries; i++) {
+			checkHasNodeLeft();
 			try {
 				RMINodeServer server = findSuccessor(key);
 				if (nodeKey == server.getNodeKey())
@@ -188,7 +188,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 				}
 			}
 		}
-		// tried 10 times and failed, throw in the towel.
+		// tried a bunch of times and failed, throw in the towel.
 	}
 
 	/**
@@ -204,8 +204,8 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	 */
 	@Override
 	public void delete(long key) throws RemoteException {
-		checkHasNodeLeft();
 		for (int i = 0; i < networkRetries; i++) {
+			checkHasNodeLeft();
 			try {
 				RMINodeServer server = findSuccessor(key);
 				if (nodeKey == server.getNodeKey())
@@ -222,7 +222,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 				}
 			}
 		}
-		// tried 10 times and failed, throw in the towel.
+		// tried a bunch of times and failed, throw in the towel.
 	}
 
 	/**

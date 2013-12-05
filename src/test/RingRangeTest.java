@@ -63,14 +63,14 @@ public class RingRangeTest {
 
 	@Test
 	public void testLeftEqualRight() {
-		assertFalse("0 <= 4 <= 0", ringRange.isInRange(true, 0, 4, 0, true));
-		assertFalse("0 <= 4 < 0", ringRange.isInRange(true, 0, 4, 0, false));
-		assertFalse("0 < 4 <= 0", ringRange.isInRange(false, 0, 4, 0, true));
-		assertFalse("0 < 4 < 0", ringRange.isInRange(false, 0, 4, 0, false));
+		assertTrue("0 <= 4 <= 0", ringRange.isInRange(true, 0, 4, 0, true));
+		assertTrue("0 <= 4 < 0", ringRange.isInRange(true, 0, 4, 0, false));
+		assertTrue("0 < 4 <= 0", ringRange.isInRange(false, 0, 4, 0, true));
+		assertTrue("0 < 4 < 0", ringRange.isInRange(false, 0, 4, 0, false));
 
 		assertTrue("0 <= 0 <= 0", ringRange.isInRange(true, 0, 0, 0, true));
-		assertFalse("0 <= 0 < 0", ringRange.isInRange(true, 0, 0, 0, false));
-		assertFalse("0 < 0 <= 0", ringRange.isInRange(false, 0, 0, 0, true));
+		assertTrue("0 <= 0 < 0", ringRange.isInRange(true, 0, 0, 0, false));
+		assertTrue("0 < 0 <= 0", ringRange.isInRange(false, 0, 0, 0, true));
 		assertFalse("0 < 0 < 0", ringRange.isInRange(false, 0, 0, 0, false));
 	}
 }

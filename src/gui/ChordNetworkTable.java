@@ -8,10 +8,18 @@ import javax.swing.table.DefaultTableModel;
 
 import chord.NodeState;
 
-public class ChordNetworkTable extends JTable{
+/**
+ * A visualization of a node network. It's just a quick 'n dirty table, listing
+ * out the state of each node it's fed. If a negative value is encontered, it's
+ * because there isn't an actual node there.
+ * 
+ * @author dmac
+ * 
+ */
+public class ChordNetworkTable extends JTable {
 
 	/**
-	 * 
+	 * Eclipse whined about this. I don't know what it is. STFU, Eclipse.
 	 */
 	private static final long serialVersionUID = -8601345570257078826L;
 

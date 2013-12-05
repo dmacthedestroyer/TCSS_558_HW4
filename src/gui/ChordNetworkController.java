@@ -19,17 +19,35 @@ import javax.swing.SwingConstants;
 import chord.RMINode;
 import chord.RMINodeServer;
 
+/**
+ * GUI component for manipulating a chord network. Contains the ability to
+ * initiate a network, add/remove nodes, and add/remove/get values from a
+ * network. This class really quick 'n dirty, with absolutely no manual or error
+ * checking. Use at your own risk.
+ * 
+ * @author dmac
+ * 
+ */
 public class ChordNetworkController extends JPanel {
 	private String host;
 	private int port;
 
+	// id of node that should create a new network
 	private JTextField txtStartNodeId = new JTextField(10);
+	// the 'm' value of the network, which determines the number of fingers each
+	// node will have and, by extension, what the keyspace is
 	private JTextField txtStartNodeM = new JTextField(3);
 
+	// id of a node that should be added to the network
 	private JTextField txtAddNodeId = new JTextField(10);
+	// if of a node that should be removed from the network
 	private JTextField txtRemoveNodeId = new JTextField(10);
 
+	// id of a node that should be called for adding/removing/getting values from
+	// the network
 	private JTextField txtValueNodeId = new JTextField(10);
+	// the key of where the value should be stored for looking up/adding/deleting
+	// values
 	private JTextField txtValueId = new JTextField(10);
 
 	public ChordNetworkController(final String host, final int port) {
@@ -118,6 +136,11 @@ public class ChordNetworkController extends JPanel {
 		seedNetwork();
 	}
 
+	/**
+	 * get a random node from the RMI network
+	 * 
+	 * @return
+	 */
 	private RMINodeServer getRandomNode() {
 		try {
 			String[] nodeList = LocateRegistry.getRegistry(host, port).list();
@@ -128,6 +151,12 @@ public class ChordNetworkController extends JPanel {
 		}
 	}
 
+	/**
+	 * get the node with the specified nodeId from the RMI network
+	 * 
+	 * @param nodeId
+	 * @return
+	 */
 	private RMINodeServer getNode(String nodeId) {
 		try {
 			return (RMINodeServer) LocateRegistry.getRegistry(host, port).lookup(nodeId);
@@ -136,6 +165,10 @@ public class ChordNetworkController extends JPanel {
 			return null;
 		}
 	}
+
+	/**
+	 * create a new Chord network
+	 */
 
 	private void seedNetwork() {
 		try {
@@ -147,6 +180,9 @@ public class ChordNetworkController extends JPanel {
 		}
 	}
 
+	/**
+	 * add a new node to the network
+	 */
 	private void addNode() {
 		try {
 			RMINodeServer fromNetwork = getRandomNode();
@@ -163,6 +199,9 @@ public class ChordNetworkController extends JPanel {
 		txtAddNodeId.selectAll();
 	}
 
+	/**
+	 * remove a node from the network
+	 */
 	private void removeNode() {
 		try {
 			((RMINodeServer) LocateRegistry.getRegistry(host, port).lookup(txtRemoveNodeId.getText())).leave();
@@ -174,6 +213,10 @@ public class ChordNetworkController extends JPanel {
 		txtRemoveNodeId.selectAll();
 	}
 
+	/**
+	 * place a value in the network. The value will just be the string
+	 * representation of the key that the value should go in.
+	 */
 	private void putValue() {
 		try {
 			getNode(txtValueNodeId.getText()).put(Long.parseLong(txtValueId.getText()), txtValueId.getText());
@@ -182,6 +225,9 @@ public class ChordNetworkController extends JPanel {
 		}
 	}
 
+	/**
+	 * delete the value provided at specified key
+	 */
 	private void deleteValue() {
 		try {
 			getNode(txtValueNodeId.getText()).delete(Long.parseLong(txtValueId.getText()));
@@ -190,6 +236,10 @@ public class ChordNetworkController extends JPanel {
 		}
 	}
 
+	/**
+	 * get the value from the network with the specified key, and set the text of
+	 * the txtValueId field with it
+	 */
 	private void getValue() {
 		try {
 			txtValueId.setText((String) getNode(txtValueNodeId.getText()).get(Long.parseLong(txtValueId.getText())));

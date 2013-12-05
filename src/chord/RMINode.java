@@ -19,7 +19,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	private final int hashLength;
 	private final long nodeKey;
 	private FingerTable fingerTable;
-	private Map<Long, Serializable> nodeStorage;
+	private final Map<Long, Serializable> nodeStorage = new ConcurrentHashMap<>();
 	private RMINodeServer predecessor;
 	private boolean hasNodeLeft;
 	private final RingRange ringRange = new RingRange();
@@ -46,7 +46,6 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	public RMINode(final int hashLength, final long nodeKey) {
 		this.hashLength = hashLength;
 		this.nodeKey = nodeKey;
-		this.nodeStorage = new ConcurrentHashMap<>();
 		networkRetries = hashLength + 1;
 		fingerTable = new FingerTable(this.hashLength, this.nodeKey);
 		backgroundThread.start();
@@ -128,6 +127,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	@Override
 	public void leave() throws RemoteException {
 		hasNodeLeft = true;
+		forwardDataToSuccessor();
 	}
 
 	/**
@@ -287,10 +287,64 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		}
 
 		try {
-			if (ringRange.isInRange(false, predecessor.getNodeKey(), potentialPredecessorNodeKey, nodeKey, false))
+			if (ringRange.isInRange(false, predecessor.getNodeKey(), potentialPredecessorNodeKey, nodeKey, false)) {
 				predecessor = potentialPredecessor;
+				forwardDataToPredecessor();
+			}
 		} catch (NullPointerException | RemoteException e) {
 			predecessor = potentialPredecessor;
+			forwardDataToPredecessor();
+		}
+	}
+
+	/**
+	 * When the predecessor changes, this function forwards the new predecessor
+	 * should manage now.
+	 * 
+	 * @param predecessor
+	 * @throws RemoteException
+	 */
+
+	public void forwardDataToPredecessor() {
+		try {
+			long predecessorNodeKey = predecessor.getNodeKey();
+			for (Long key : nodeStorage.keySet())
+				if (ringRange.isInRange(false, nodeKey, key, predecessorNodeKey, true))
+					predecessor.put(key, nodeStorage.remove(key));
+		} catch (RemoteException r) {
+			// node doesn't exist... This means the predecessor JUST crashed.
+			// f*$k it, let's go bowling.
+		}
+	}
+
+	/**
+	 * When the node gracefully leaves, this puts all data to the successor, who
+	 * now controls it.
+	 * 
+	 * @param successor
+	 * @throws RemoteException
+	 */
+
+	public void forwardDataToSuccessor() {
+		RMINodeServer successor = null;
+		// find the first finger that's not us
+		for (Finger f : fingerTable)
+			try {
+				if (f.getNode().getNodeKey() != nodeKey)
+					successor = f.getNode();
+				break;
+			} catch (NullPointerException | RemoteException e) {
+			}
+
+		// no point in doing anything if we're our own successor
+		if (successor == null)
+			return;
+
+		try {
+			for (Long key : nodeStorage.keySet())
+				successor.put(key, nodeStorage.remove(key));
+		} catch (NullPointerException | RemoteException r) {
+			// node doesn't exist, so do nothing...
 		}
 	}
 

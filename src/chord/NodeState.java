@@ -3,6 +3,13 @@ package chord;
 import java.io.Serializable;
 import java.util.List;
 
+/**
+ * Represents the state of a node in the Chord network. Includes information on
+ * the key, predecessor, fingers and number of values being stored by this node
+ * 
+ * @author dmac
+ * 
+ */
 public class NodeState implements Serializable {
 
 	private long key, predecessor, valueCount;

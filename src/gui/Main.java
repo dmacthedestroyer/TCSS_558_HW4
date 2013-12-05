@@ -19,9 +19,19 @@ import javax.swing.Timer;
 import chord.NodeState;
 import chord.RMINodeState;
 
+/**
+ * A really crude, fragile GUI to enable you to poke around inside a Chord
+ * network. There is absolutely no error handling anywhere. If you're reading
+ * this, you know what code is, so just read the stack trace or the code to
+ * figure out what's going on or how to use this.
+ * 
+ * @author dmac
+ * 
+ */
 public class Main extends JPanel {
+
 	/**
-	 * 
+	 * Eclipse whined about this. I don't know what it is. STFU, Eclipse.
 	 */
 	private static final long serialVersionUID = 967889003587846649L;
 
@@ -94,6 +104,13 @@ public class Main extends JPanel {
 		poller.start();
 	}
 
+	/**
+	 * look up all items in the registry and get their node state. This is a
+	 * really cheap way to find the state of a network, but this whole thing is
+	 * meant to quickly get info out, so I'm not worried about cheating
+	 * 
+	 * @return
+	 */
 	private List<NodeState> getNetworkState() {
 		Registry registry;
 		try {

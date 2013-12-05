@@ -103,7 +103,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 				fingers.add(f.getStart() * -1);
 			}
 
-		return new NodeState(getNodeKey(), predecessorNodeKey, fingers, 0);
+		return new NodeState(getNodeKey(), predecessorNodeKey, fingers, nodeStorage.size());
 	}
 
 	/**

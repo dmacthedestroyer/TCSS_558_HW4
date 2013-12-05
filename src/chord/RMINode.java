@@ -14,10 +14,10 @@ public class RMINode implements RMINodeServer, RMINodeState {
 
 	private final int hashLength;
 	private final long nodeKey;
-	private final long totalKeys;
 	private FingerTable fingerTable;
 	private RMINodeServer predecessor;
 	private boolean hasNodeLeft;
+	private final RingRange ringRange = new RingRange();
 	private final Thread backgroundThread = new Thread() {
 		{
 			setDaemon(true);
@@ -38,21 +38,9 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		}
 	};
 
-	private boolean withinOpenInterval(long a, long b, long c) {
-		long offset = totalKeys - 1 - b;
-		long aPrime = (a + offset) % totalKeys;
-		long cPrime = (c + offset) % totalKeys;
-		return aPrime < cPrime;
-	}
-
-	private boolean withinClosedInterval(long a, long b, long c) {
-		return b == c || withinOpenInterval(a, b, c + 1);
-	}
-
 	public RMINode(final int hashLength, final long nodeKey) {
 		this.hashLength = hashLength;
 		this.nodeKey = nodeKey;
-		this.totalKeys = 1 << hashLength;
 		fingerTable = new FingerTable(this.hashLength, this.nodeKey);
 
 		backgroundThread.start();
@@ -169,12 +157,12 @@ public class RMINode implements RMINodeServer, RMINodeState {
 			return findSuccessor(key);
 		}
 
-		if (withinClosedInterval(key, nodeKey, successorNodeKey))
+		if (ringRange.isInRange(false, nodeKey, key, successorNodeKey, true))
 			return fingerTable.getSuccessor().getNode();
 
 		for (Finger f : fingerTable.reverse()) {
 			try {
-				if (withinOpenInterval(f.getNode().getNodeKey(), nodeKey, key))
+				if (ringRange.isInRange(false, nodeKey, f.getNode().getNodeKey(), key, false))
 					return f.getNode().findSuccessor(key);
 			} catch (NullPointerException | RemoteException e) {
 				f.setNode(f.getStart() == fingerTable.getSuccessor().getStart() ? this : null);
@@ -203,7 +191,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		}
 
 		try {
-			if (withinOpenInterval(potentialPredecessorNodeKey, predecessor.getNodeKey(), nodeKey))
+			if (ringRange.isInRange(false, predecessor.getNodeKey(), potentialPredecessorNodeKey, nodeKey, false))
 				predecessor = potentialPredecessor;
 		} catch (NullPointerException | RemoteException e) {
 			predecessor = potentialPredecessor;
@@ -253,7 +241,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 
 		try {
 			RMINodeServer successor_predecessor = successor.getPredecessor();
-			if (successor_predecessor != null && withinOpenInterval(successor_predecessor.getNodeKey(), nodeKey, successorNodeKey))
+			if (successor_predecessor != null && ringRange.isInRange(false, nodeKey, successor_predecessor.getNodeKey(), successorNodeKey, false))
 				fingerTable.getSuccessor().setNode(successor_predecessor);
 		} catch (RemoteException e) {
 		}

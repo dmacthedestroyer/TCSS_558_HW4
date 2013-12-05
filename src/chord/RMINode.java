@@ -45,6 +45,10 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	};
 
 	public RMINode(final int hashLength, final long nodeKey) {
+		long keyspace = (1 << hashLength) - 1;
+		if(nodeKey > keyspace)
+			throw new IllegalArgumentException(String.format("nodeKey (%s) cannot exceed the max keyspace (%s)", nodeKey, keyspace));
+
 		this.hashLength = hashLength;
 		this.nodeKey = nodeKey;
 		networkRetries = hashLength + 1;
@@ -105,7 +109,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 				fingers.add(f.getStart() * -1);
 			}
 
-		return new NodeState(getNodeKey(), predecessorNodeKey, fingers, 0);
+		return new NodeState(getNodeKey(), predecessorNodeKey, fingers, nodeStorage.size());
 	}
 
 	/**
@@ -307,7 +311,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	}
 
 	/**
-	 * When the predecessor changes, this function forwards the new predecessor
+	 * When the predecessor changes, this function forwards values the new predecessor
 	 * should manage now.
 	 * 
 	 * @param predecessor

@@ -14,6 +14,8 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class RMINode implements RMINodeServer, RMINodeState {
 
+	private static final int FIX_FINGER_INTERVAL = 1000;
+	private final int networkRetries;
 	private final int hashLength;
 	private final long nodeKey;
 	private FingerTable fingerTable;
@@ -30,7 +32,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 			while (!isInterrupted()) {
 				try {
 					synchronized (this) {
-						wait(1000);
+						wait(FIX_FINGER_INTERVAL);
 					}
 				} catch (InterruptedException e) {
 					break;
@@ -44,28 +46,42 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	public RMINode(final int hashLength, final long nodeKey) {
 		this.hashLength = hashLength;
 		this.nodeKey = nodeKey;
+		networkRetries = hashLength + 1;
 		fingerTable = new FingerTable(this.hashLength, this.nodeKey);
-
 		backgroundThread.start();
 	}
 
+	/**
+	 * Check if this node has left and throw an exception if it has.
+	 * 
+	 * @throws RemoteException
+	 */
 	private void checkHasNodeLeft() throws RemoteException {
 		if (hasNodeLeft)
 			throw new RemoteException();
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public int getHashLength() throws RemoteException {
 		checkHasNodeLeft();
 		return hashLength;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public long getNodeKey() throws RemoteException {
 		checkHasNodeLeft();
 		return nodeKey;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public NodeState getState() throws RemoteException {
 		checkHasNodeLeft();
@@ -90,6 +106,9 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		return new NodeState(getNodeKey(), predecessorNodeKey, fingers, 0);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public void join(RMINodeServer fromNetwork) throws RemoteException {
 		checkHasNodeLeft();
@@ -102,53 +121,121 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		}
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public void leave() throws RemoteException {
 		hasNodeLeft = true;
 		forwardDataToSuccessor();
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public Serializable get(long key) throws RemoteException {
-		checkHasNodeLeft();
-
-		// TODO Auto-generated method stub
+		for (int i = 0; i < networkRetries; i++) {
+			checkHasNodeLeft();
+			try {
+				RMINodeServer server = findSuccessor(key);
+				if (nodeKey == server.getNodeKey())
+					return nodeStorage.get(key);
+				else
+					return server.get(key);
+			} catch (NullPointerException | RemoteException e	) {
+				// some node somewhere is dead... wait a while for our fingers to
+				// correct then try again
+				try {
+					Thread.sleep(FIX_FINGER_INTERVAL);
+				} catch (InterruptedException e1) {
+					e1.printStackTrace();
+				}
+			}
+		}
+		// tried a bunch of times and failed, throw in the towel.
 		return null;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public Serializable get(String key) throws RemoteException {
-		checkHasNodeLeft();
-
-		// TODO Auto-generated method stub
-		return null;
+		return get(new KeyHash<String>(key, hashLength).getHash());
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public void put(long key, Serializable value) throws RemoteException {
-
-		// TODO Auto-generated method stub
-
+		for (int i = 0; i < networkRetries; i++) {
+			checkHasNodeLeft();
+			try {
+				RMINodeServer server = findSuccessor(key);
+				if (nodeKey == server.getNodeKey())
+					nodeStorage.put(key, value);
+				else
+					server.put(key, value);
+			} catch (NullPointerException | RemoteException e	) {
+				// some node somewhere is dead... wait a while for our fingers to
+				// correct then try again
+				try {
+					Thread.sleep(FIX_FINGER_INTERVAL);
+				} catch (InterruptedException e1) {
+					e1.printStackTrace();
+				}
+			}
+		}
+		// tried a bunch of times and failed, throw in the towel.
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public void put(String key, Serializable value) throws RemoteException {
-		// TODO Auto-generated method stub
-
+		put(new KeyHash<String>(key, hashLength).getHash(), value);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public void delete(long key) throws RemoteException {
-		// TODO Auto-generated method stub
-
+		for (int i = 0; i < networkRetries; i++) {
+			checkHasNodeLeft();
+			try {
+				RMINodeServer server = findSuccessor(key);
+				if (nodeKey == server.getNodeKey())
+					nodeStorage.remove(key);
+				else
+					server.delete(key);
+			} catch (NullPointerException | RemoteException e	) {
+				// some node somewhere is dead... wait a while for our fingers to
+				// correct then try again
+				try {
+					Thread.sleep(FIX_FINGER_INTERVAL);
+				} catch (InterruptedException e1) {
+					e1.printStackTrace();
+				}
+			}
+		}
+		// tried a bunch of times and failed, throw in the towel.
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public void delete(String key) throws RemoteException {
-		// TODO Auto-generated method stub
-
+		delete(new KeyHash<String>(key, hashLength).getHash());
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public RMINodeServer findSuccessor(long key) throws RemoteException {
 		checkHasNodeLeft();
@@ -176,13 +263,18 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		return this;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public RMINodeServer getPredecessor() throws RemoteException {
 		checkHasNodeLeft();
-
 		return predecessor;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public void checkPredecessor(RMINodeServer potentialPredecessor) throws RemoteException {
 		checkHasNodeLeft();
@@ -256,6 +348,9 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		}
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public void nodeLeaving(long leavingNodeKey) throws RemoteException {
 		checkHasNodeLeft();
@@ -308,6 +403,28 @@ public class RMINode implements RMINodeServer, RMINodeState {
 			fingerTable.getSuccessor().getNode().checkPredecessor(this);
 		} catch (RemoteException e) {
 			fingerTable.getSuccessor().setNode(this);
+		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public boolean equals(Object other) {
+		RMINode otherNode;
+		if (other instanceof RMINode) {
+			otherNode = (RMINode) other;
+		} else {
+			return false;
+		}
+		try {
+			if (this.getNodeKey() == otherNode.getNodeKey()) {
+				return true;
+			} else {
+				return false;
+			}
+		} catch (RemoteException e) {
+			return false;
 		}
 	}
 }

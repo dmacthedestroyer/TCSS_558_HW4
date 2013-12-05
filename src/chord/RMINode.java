@@ -5,9 +5,7 @@ import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-
-import javax.swing.text.html.HTMLDocument.Iterator;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Implements a node in the Chord network.
@@ -19,7 +17,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	private final int hashLength;
 	private final long nodeKey;
 	private FingerTable fingerTable;
-    private Map<Long, Serializable> nodeStorage;
+	private final Map<Long, Serializable> nodeStorage = new ConcurrentHashMap<>();
 	private RMINodeServer predecessor;
 	private boolean hasNodeLeft;
 	private final RingRange ringRange = new RingRange();
@@ -107,7 +105,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	@Override
 	public void leave() throws RemoteException {
 		hasNodeLeft = true;
-		forwardDataToSuccessor(fingerTable.getSuccessor().getNode());
+		forwardDataToSuccessor();
 	}
 
 	@Override
@@ -197,56 +195,67 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		}
 
 		try {
-			if (ringRange.isInRange(false, predecessor.getNodeKey(), potentialPredecessorNodeKey, nodeKey, false))
+			if (ringRange.isInRange(false, predecessor.getNodeKey(), potentialPredecessorNodeKey, nodeKey, false)) {
 				predecessor = potentialPredecessor;
-				forwardDataToPredecessor(predecessor);
+				forwardDataToPredecessor();
+			}
 		} catch (NullPointerException | RemoteException e) {
 			predecessor = potentialPredecessor;
-			forwardDataToPredecessor(predecessor);
-		}
-	}
-	
-	/**
-	 * When the predecessor changes, this function forwards the new predecessor should manage now.
-	 * 
-	 * @param predecessor
-	 * @throws RemoteException
-	 */
-	
-	public void forwardDataToPredecessor(RMINodeServer predecessor) throws RemoteException{ //predecessor is global... maybe drop argument?
-		try{
-			if(this.getNodeKey() <= predecessor.getNodeKey()){
-				for(long i = predecessor.getNodeKey(); i<this.getNodeKey(); i++){
-					predecessor.put(i, this.get(i));
-					this.delete(i);
-				}
-			}
-		}
-		catch(RemoteException r){
-			//node doesn't exist... This means the predecessor JUST crashed.
+			forwardDataToPredecessor();
 		}
 	}
 
 	/**
-	 * When the node gracefully leaves, this puts all data to the successor, who now controls it.
+	 * When the predecessor changes, this function forwards the new predecessor
+	 * should manage now.
+	 * 
+	 * @param predecessor
+	 * @throws RemoteException
+	 */
+
+	public void forwardDataToPredecessor() {
+		try {
+			long predecessorNodeKey = predecessor.getNodeKey();
+			for (Long key : nodeStorage.keySet())
+				if (ringRange.isInRange(false, nodeKey, key, predecessorNodeKey, true))
+					predecessor.put(key, nodeStorage.remove(key));
+		} catch (RemoteException r) {
+			// node doesn't exist... This means the predecessor JUST crashed.
+			// f*$k it, let's go bowling.
+		}
+	}
+
+	/**
+	 * When the node gracefully leaves, this puts all data to the successor, who
+	 * now controls it.
 	 * 
 	 * @param successor
 	 * @throws RemoteException
 	 */
-	
-	public void forwardDataToSuccessor(RMINodeServer successor) throws RemoteException{
-		try{
-			for(Entry<Long, Serializable> entry : nodeStorage.entrySet()){
-				successor.put(entry.getKey(), entry.getValue());
-				this.delete(entry.getKey());
+
+	public void forwardDataToSuccessor() {
+		RMINodeServer successor = null;
+		// find the first finger that's not us
+		for (Finger f : fingerTable)
+			try {
+				if (f.getNode().getNodeKey() != nodeKey)
+					successor = f.getNode();
+				break;
+			} catch (NullPointerException | RemoteException e) {
 			}
+
+		// no point in doing anything if we're our own successor
+		if (successor == null)
+			return;
+
+		try {
+			for (Long key : nodeStorage.keySet())
+				successor.put(key, nodeStorage.remove(key));
+		} catch (NullPointerException | RemoteException r) {
+			// node doesn't exist, so do nothing...
 		}
-		catch(RemoteException r){
-			//node doesn't exist. This means successor doesn't exist. Try next finger.
-			//fingers fix themselves so do nothing...
-		}		
 	}
-	
+
 	@Override
 	public void nodeLeaving(long leavingNodeKey) throws RemoteException {
 		checkHasNodeLeft();

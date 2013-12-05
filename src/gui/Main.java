@@ -16,6 +16,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.Timer;
 
+import util.Log;
 import chord.NodeState;
 import chord.RMINodeState;
 
@@ -40,23 +41,11 @@ public class Main extends JPanel {
 	 * invoked from the event-dispatching thread.
 	 */
 	private static void createAndShowGUI(String[] args) {
-		String host = null;
-		int port = 0;
+		if (args.length < 2)
+			Log.err("usage: java Main <registryAddress> <registryPort> [initialHashLength] [joinNodeKey] ... [joinNodeKey]");
 
-		switch (args.length) {
-		case 0:
-			break;
-		case 1:
-			port = Integer.parseInt(args[0]);
-			break;
-		case 2:
-			host = args[0];
-			port = Integer.parseInt(args[1]);
-			break;
-		default:
-			System.out.print("no more than two arguments allowed");
-			return;
-		}
+		String host = args[0];
+		int port = Integer.parseInt(args[1]);
 
 		// Create and set up the window.
 		JFrame frame = new JFrame("Chord node visualization");
@@ -70,6 +59,13 @@ public class Main extends JPanel {
 		// Display the window.
 		frame.pack();
 		frame.setVisible(true);
+
+		if (args.length > 3) {
+			newContentPane.controller.seedNetwork(Integer.parseInt(args[2]), Long.parseLong(args[3]));
+			for (int i = 4; i < args.length; i++) {
+				newContentPane.controller.addNode(Long.parseLong(args[i]));
+			}
+		}
 	}
 
 	public static void main(final String[] args) {
@@ -85,6 +81,7 @@ public class Main extends JPanel {
 	private String host;
 	private int port;
 	private ChordNetworkTable chordNetworkTable = new ChordNetworkTable();
+	private final ChordNetworkController controller;
 
 	private Timer poller = new Timer(1000, new ActionListener() {
 
@@ -100,7 +97,7 @@ public class Main extends JPanel {
 		this.port = port;
 
 		add(new JScrollPane(chordNetworkTable), BorderLayout.CENTER);
-		add(new ChordNetworkController(host, port), BorderLayout.SOUTH);
+		add((controller = new ChordNetworkController(host, port)), BorderLayout.SOUTH);
 		poller.start();
 	}
 

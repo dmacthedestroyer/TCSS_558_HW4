@@ -130,10 +130,6 @@ public class ChordNetworkController extends JPanel {
 				getValue();
 			}
 		}));
-
-		txtStartNodeId.setText("0");
-		txtStartNodeM.setText("3");
-		seedNetwork();
 	}
 
 	/**
@@ -171,8 +167,12 @@ public class ChordNetworkController extends JPanel {
 	 */
 
 	private void seedNetwork() {
+		seedNetwork(Integer.parseInt(txtStartNodeM.getText()), Long.parseLong(txtStartNodeId.getText()));
+	}
+	
+	public void seedNetwork(int m, long nodeId){
 		try {
-			RMINode node = new RMINode(Integer.parseInt(txtStartNodeM.getText()), Long.parseLong(txtStartNodeId.getText()));
+			RMINode node = new RMINode(m, nodeId);
 			LocateRegistry.createRegistry(port).bind("" + node.getNodeKey(), UnicastRemoteObject.exportObject(node, 0));
 			node.join(null);
 		} catch (Exception ex) {
@@ -184,12 +184,16 @@ public class ChordNetworkController extends JPanel {
 	 * add a new node to the network
 	 */
 	private void addNode() {
+		addNode(Long.parseLong(txtAddNodeId.getText()));
+	}
+	
+	public void addNode(long nodeId) {
 		try {
 			RMINodeServer fromNetwork = getRandomNode();
 			if (fromNetwork == null)
 				return;
 
-			RMINode node = new RMINode(fromNetwork.getHashLength(), Long.parseLong(txtAddNodeId.getText()));
+			RMINode node = new RMINode(fromNetwork.getHashLength(), nodeId);
 			LocateRegistry.getRegistry(host, port).bind("" + node.getNodeKey(), UnicastRemoteObject.exportObject(node, 0));
 			node.join(fromNetwork);
 		} catch (Exception ex) {
@@ -212,7 +216,7 @@ public class ChordNetworkController extends JPanel {
 		txtRemoveNodeId.grabFocus();
 		txtRemoveNodeId.selectAll();
 	}
-
+	
 	/**
 	 * place a value in the network. The value will just be the string
 	 * representation of the key that the value should go in.

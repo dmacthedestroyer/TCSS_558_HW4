@@ -18,16 +18,16 @@ import util.GenerateMultiNodeNetwork;
  * Tests the storage functions of the Chord network.
  * 
  * @author Jesse Carrigan
- *
+ * 
  */
 public class ChordStorageTest {
 
 	RMINodeClient client;
 	static Registry registry;
-	
+
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		String[] args = {"1337", "32", "4"};
+		String[] args = { "1337", "32", "4" };
 		GenerateMultiNodeNetwork.main(args);
 		registry = LocateRegistry.getRegistry(1337);
 	}
@@ -41,7 +41,7 @@ public class ChordStorageTest {
 		String getValue = (String) client.get(key);
 		assertEquals(value, getValue);
 	}
-	
+
 	@Test
 	public void testGetAndPutWithDifferentClients() throws AccessException, RemoteException, NotBoundException {
 		RMINodeClient putClient = (RMINodeClient) registry.lookup("node0");
@@ -60,21 +60,21 @@ public class ChordStorageTest {
 		String key = "testKey";
 		String value = "testValue";
 		client.put(key, value);
+		assertEquals(value, client.get(key));
 		client.delete(key);
 		String getValue = (String) client.get(key);
 		assertEquals(null, getValue);
 	}
-	
+
 	@Test
 	public void testDeleteWithDifferentClients() throws RemoteException, NotBoundException {
 		RMINodeClient putClient = (RMINodeClient) registry.lookup("node0");
 		String key = "testKey";
 		String value = "testValue";
 		putClient.put(key, value);
+		assertEquals(value, putClient.get(key));
 		RMINodeClient deleteClient = (RMINodeClient) registry.lookup("node1");
 		deleteClient.delete(key);
-		String getValue = (String) putClient.get(key);
-		assertEquals(null, getValue);
+		assertEquals(null, putClient.get(key));
 	}
-
 }

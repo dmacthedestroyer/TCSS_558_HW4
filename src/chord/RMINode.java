@@ -14,7 +14,8 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class RMINode implements RMINodeServer, RMINodeState {
 
-	private static final int WAIT_MILLIS = 100;
+	private static final int FIX_FINGER_INTERVAL = 1000;
+	private final int networkRetries;
 	private final int hashLength;
 	private final long nodeKey;
 	private FingerTable fingerTable;
@@ -31,7 +32,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 			while (!isInterrupted()) {
 				try {
 					synchronized (this) {
-						wait(1000);
+						wait(FIX_FINGER_INTERVAL);
 					}
 				} catch (InterruptedException e) {
 					break;
@@ -46,6 +47,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		this.hashLength = hashLength;
 		this.nodeKey = nodeKey;
 		this.nodeStorage = new ConcurrentHashMap<>();
+		networkRetries = hashLength + 1;
 		fingerTable = new FingerTable(this.hashLength, this.nodeKey);
 		backgroundThread.start();
 	}
@@ -134,22 +136,25 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	@Override
 	public Serializable get(long key) throws RemoteException {
 		checkHasNodeLeft();
-		try {
-			RMINodeServer server = findSuccessor(key);
-			if (nodeKey == server.getNodeKey())
-				return nodeStorage.get(key);
-			else
-				return server.get(key);
-		} catch (NullPointerException | RemoteException e) {
-			// some node somewhere is dead... wait a while for our fingers to correct
-			// then try again
+		for (int i = 0; i < networkRetries; i++) {
 			try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e1) {
-				e1.printStackTrace();
+				RMINodeServer server = findSuccessor(key);
+				if (nodeKey == server.getNodeKey())
+					return nodeStorage.get(key);
+				else
+					return server.get(key);
+			} catch (NullPointerException | RemoteException e	) {
+				// some node somewhere is dead... wait a while for our fingers to
+				// correct then try again
+				try {
+					Thread.sleep(FIX_FINGER_INTERVAL);
+				} catch (InterruptedException e1) {
+					e1.printStackTrace();
+				}
 			}
-			return get(key);
 		}
+		// tried 10 times and failed, throw in the towel.
+		return null;
 	}
 
 	/**
@@ -166,12 +171,24 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	@Override
 	public void put(long key, Serializable value) throws RemoteException {
 		checkHasNodeLeft();
-		RMINodeServer server = findSuccessor(key);
-		if (this.nodeKey == server.getNodeKey()) {
-			nodeStorage.put(key, value);
-		} else {
-			server.put(key, value);
+		for (int i = 0; i < networkRetries; i++) {
+			try {
+				RMINodeServer server = findSuccessor(key);
+				if (nodeKey == server.getNodeKey())
+					nodeStorage.put(key, value);
+				else
+					server.put(key, value);
+			} catch (NullPointerException | RemoteException e	) {
+				// some node somewhere is dead... wait a while for our fingers to
+				// correct then try again
+				try {
+					Thread.sleep(FIX_FINGER_INTERVAL);
+				} catch (InterruptedException e1) {
+					e1.printStackTrace();
+				}
+			}
 		}
+		// tried 10 times and failed, throw in the towel.
 	}
 
 	/**
@@ -179,21 +196,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	 */
 	@Override
 	public void put(String key, Serializable value) throws RemoteException {
-		KeyHash<String> keyHash = new KeyHash<String>(key, hashLength);
-		long hash = keyHash.getHash();
-		try {
-			checkHasNodeLeft();
-			put(hash, value);
-		} catch (RemoteException re) {
-			// Network may not be stable; wait for the network to stabilize, then try
-			// again
-			try {
-				Thread.sleep(WAIT_MILLIS);
-				put(hash, value);
-			} catch (InterruptedException ie) {
-				ie.printStackTrace();
-			}
-		}
+		put(new KeyHash<String>(key, hashLength).getHash(), value);
 	}
 
 	/**
@@ -202,12 +205,24 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	@Override
 	public void delete(long key) throws RemoteException {
 		checkHasNodeLeft();
-		RMINodeServer server = findSuccessor(key);
-		if (this.nodeKey == server.getNodeKey()) {
-			nodeStorage.remove(key);
-		} else {
-			server.delete(key);
+		for (int i = 0; i < networkRetries; i++) {
+			try {
+				RMINodeServer server = findSuccessor(key);
+				if (nodeKey == server.getNodeKey())
+					nodeStorage.remove(key);
+				else
+					server.delete(key);
+			} catch (NullPointerException | RemoteException e	) {
+				// some node somewhere is dead... wait a while for our fingers to
+				// correct then try again
+				try {
+					Thread.sleep(FIX_FINGER_INTERVAL);
+				} catch (InterruptedException e1) {
+					e1.printStackTrace();
+				}
+			}
 		}
+		// tried 10 times and failed, throw in the towel.
 	}
 
 	/**
@@ -215,21 +230,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	 */
 	@Override
 	public void delete(String key) throws RemoteException {
-		KeyHash<String> keyHash = new KeyHash<String>(key, hashLength);
-		long hash = keyHash.getHash();
-		try {
-			checkHasNodeLeft();
-			delete(hash);
-		} catch (RemoteException re) {
-			// Network may not be stable; wait for the network to stabilize, then try
-			// again
-			try {
-				Thread.sleep(WAIT_MILLIS);
-				delete(hash);
-			} catch (InterruptedException ie) {
-				ie.printStackTrace();
-			}
-		}
+		delete(new KeyHash<String>(key, hashLength).getHash());
 	}
 
 	/**

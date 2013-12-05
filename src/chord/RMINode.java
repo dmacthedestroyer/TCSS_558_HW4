@@ -14,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class RMINode implements RMINodeServer, RMINodeState {
 
+	private static final int WAIT_MILLIS = 100;
 	private final int hashLength;
 	private final long nodeKey;
 	private FingerTable fingerTable;
@@ -49,23 +50,37 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		backgroundThread.start();
 	}
 
+	/**
+	 * Check if this node has left and throw an exception if it has.
+	 * 
+	 * @throws RemoteException
+	 */
 	private void checkHasNodeLeft() throws RemoteException {
 		if (hasNodeLeft)
 			throw new RemoteException();
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public int getHashLength() throws RemoteException {
 		checkHasNodeLeft();
 		return hashLength;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public long getNodeKey() throws RemoteException {
 		checkHasNodeLeft();
 		return nodeKey;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public NodeState getState() throws RemoteException {
 		checkHasNodeLeft();
@@ -90,6 +105,9 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		return new NodeState(getNodeKey(), predecessorNodeKey, fingers, 0);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public void join(RMINodeServer fromNetwork) throws RemoteException {
 		checkHasNodeLeft();
@@ -102,11 +120,17 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		}
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public void leave() throws RemoteException {
 		hasNodeLeft = true;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public Serializable get(long key) throws RemoteException {
 		checkHasNodeLeft();
@@ -120,14 +144,33 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		return value;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public Serializable get(String key) throws RemoteException {
-		checkHasNodeLeft();
 		KeyHash<String> keyHash = new KeyHash<String>(key, hashLength);
 		long hash = keyHash.getHash();
-		return get(hash);
+		Serializable returnValue = null;
+		try {
+			checkHasNodeLeft();
+			returnValue = get(hash);
+		} catch (RemoteException re) {
+			// Network may not be stable
+			try {
+				// Wait for the network to stabilize, then try again
+				Thread.sleep(WAIT_MILLIS);
+				returnValue = get(hash);
+			} catch (InterruptedException ie) {
+				ie.printStackTrace();
+			}
+		}
+		return returnValue;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public void put(long key, Serializable value) throws RemoteException {
 		checkHasNodeLeft();
@@ -139,14 +182,30 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		}
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public void put(String key, Serializable value) throws RemoteException {
-		checkHasNodeLeft();
 		KeyHash<String> keyHash = new KeyHash<String>(key, hashLength);
 		long hash = keyHash.getHash();
-		put(hash, value);
+		try {
+			checkHasNodeLeft();
+			put(hash, value);
+		} catch (RemoteException re) {
+			// Network may not be stable; wait for the network to stabilize, then try again
+			try {
+				Thread.sleep(WAIT_MILLIS);
+				put(hash, value);
+			} catch (InterruptedException ie) {
+				ie.printStackTrace();
+			}
+		}		
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public void delete(long key) throws RemoteException {
 		checkHasNodeLeft();
@@ -158,14 +217,30 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		}
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public void delete(String key) throws RemoteException {
-		checkHasNodeLeft();
 		KeyHash<String> keyHash = new KeyHash<String>(key, hashLength);
 		long hash = keyHash.getHash();
-		delete(hash);
+		try {
+			checkHasNodeLeft();
+			delete(hash);
+		} catch (RemoteException re) {
+			// Network may not be stable; wait for the network to stabilize, then try again
+			try {
+				Thread.sleep(WAIT_MILLIS);
+				delete(hash);
+			} catch (InterruptedException ie) {
+				ie.printStackTrace();
+			}
+		}
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public RMINodeServer findSuccessor(long key) throws RemoteException {
 		checkHasNodeLeft();
@@ -193,13 +268,18 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		return this;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public RMINodeServer getPredecessor() throws RemoteException {
 		checkHasNodeLeft();
-
 		return predecessor;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public void checkPredecessor(RMINodeServer potentialPredecessor) throws RemoteException {
 		checkHasNodeLeft();
@@ -218,7 +298,10 @@ public class RMINode implements RMINodeServer, RMINodeState {
 			predecessor = potentialPredecessor;
 		}
 	}
-
+	
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public void nodeLeaving(long leavingNodeKey) throws RemoteException {
 		checkHasNodeLeft();
@@ -273,4 +356,27 @@ public class RMINode implements RMINodeServer, RMINodeState {
 			fingerTable.getSuccessor().setNode(this);
 		}
 	}
+	
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public boolean equals(Object other) {
+		RMINode otherNode;
+		if (other instanceof RMINode) {
+			otherNode = (RMINode) other;
+		} else {
+			return false;
+		}
+		try {
+			if (this.getNodeKey() == otherNode.getNodeKey()) {
+				return true;
+			} else {
+				return false;
+			}
+		} catch (RemoteException e) {
+			return false;
+		}
+	}
+	
 }

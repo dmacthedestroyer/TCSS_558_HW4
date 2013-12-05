@@ -5,8 +5,8 @@ import gui.util.JAutoSubscribeActionButton;
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.Random;
 
@@ -28,6 +28,9 @@ public class ChordNetworkController extends JPanel {
 
 	private JTextField txtAddNodeId = new JTextField(10);
 	private JTextField txtRemoveNodeId = new JTextField(10);
+
+	private JTextField txtValueNodeId = new JTextField(10);
+	private JTextField txtValueId = new JTextField(10);
 
 	public ChordNetworkController(final String host, final int port) {
 		super(new FlowLayout());
@@ -69,7 +72,7 @@ public class ChordNetworkController extends JPanel {
 
 		add(txtRemoveNodeId);
 		txtRemoveNodeId.addActionListener(new ActionListener() {
-			
+
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				removeNode();
@@ -83,17 +86,51 @@ public class ChordNetworkController extends JPanel {
 			}
 		}));
 
+		add(new JSeparator());
+
+		add(new JLabel("node:"));
+		add(txtValueNodeId);
+
+		add(new JLabel("value key:"));
+		add(txtValueId);
+
+		add(new JAutoSubscribeActionButton("put", new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				putValue();
+			}
+		}));
+		add(new JAutoSubscribeActionButton("delete", new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				deleteValue();
+			}
+		}));
+		add(new JAutoSubscribeActionButton("get", new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				getValue();
+			}
+		}));
+
 		txtStartNodeId.setText("0");
 		txtStartNodeM.setText("3");
 		seedNetwork();
-		txtAddNodeId.grabFocus();
 	}
 
 	private RMINodeServer getRandomNode() {
 		try {
-			Registry registry = LocateRegistry.getRegistry(host, port);
-			String[] nodeList = registry.list();
-			return (RMINodeServer) registry.lookup("" + nodeList[new Random().nextInt(nodeList.length)]);
+			String[] nodeList = LocateRegistry.getRegistry(host, port).list();
+			return getNode("" + nodeList[new Random().nextInt(nodeList.length)]);
+		} catch (Exception e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+	private RMINodeServer getNode(String nodeId) {
+		try {
+			return (RMINodeServer) LocateRegistry.getRegistry(host, port).lookup(nodeId);
 		} catch (Exception e) {
 			e.printStackTrace();
 			return null;
@@ -109,7 +146,7 @@ public class ChordNetworkController extends JPanel {
 			ex.printStackTrace();
 		}
 	}
-	
+
 	private void addNode() {
 		try {
 			RMINodeServer fromNetwork = getRandomNode();
@@ -128,12 +165,36 @@ public class ChordNetworkController extends JPanel {
 
 	private void removeNode() {
 		try {
-			((RMINodeServer)LocateRegistry.getRegistry(host, port).lookup(txtRemoveNodeId.getText())).leave();
+			((RMINodeServer) LocateRegistry.getRegistry(host, port).lookup(txtRemoveNodeId.getText())).leave();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		
+
 		txtRemoveNodeId.grabFocus();
 		txtRemoveNodeId.selectAll();
+	}
+
+	private void putValue() {
+		try {
+			getNode(txtValueNodeId.getText()).put(Long.parseLong(txtValueId.getText()), txtValueId.getText());
+		} catch (NumberFormatException | RemoteException e) {
+			e.printStackTrace();
+		}
+	}
+
+	private void deleteValue() {
+		try {
+			getNode(txtValueNodeId.getText()).delete(Long.parseLong(txtValueId.getText()));
+		} catch (NumberFormatException | RemoteException e) {
+			e.printStackTrace();
+		}
+	}
+
+	private void getValue() {
+		try {
+			txtValueId.setText((String) getNode(txtValueNodeId.getText()).get(Long.parseLong(txtValueId.getText())));
+		} catch (NumberFormatException | RemoteException e) {
+			e.printStackTrace();
+		}
 	}
 }

@@ -4,6 +4,10 @@ import java.io.Serializable;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import javax.swing.text.html.HTMLDocument.Iterator;
 
 /**
  * Implements a node in the Chord network.
@@ -15,6 +19,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	private final int hashLength;
 	private final long nodeKey;
 	private FingerTable fingerTable;
+    private Map<Long, Serializable> nodeStorage;
 	private RMINodeServer predecessor;
 	private boolean hasNodeLeft;
 	private final RingRange ringRange = new RingRange();
@@ -102,6 +107,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	@Override
 	public void leave() throws RemoteException {
 		hasNodeLeft = true;
+		forwardDataToSuccessor(fingerTable.getSuccessor().getNode());
 	}
 
 	@Override
@@ -193,11 +199,54 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		try {
 			if (ringRange.isInRange(false, predecessor.getNodeKey(), potentialPredecessorNodeKey, nodeKey, false))
 				predecessor = potentialPredecessor;
+				forwardDataToPredecessor(predecessor);
 		} catch (NullPointerException | RemoteException e) {
 			predecessor = potentialPredecessor;
+			forwardDataToPredecessor(predecessor);
+		}
+	}
+	
+	/**
+	 * When the predecessor changes, this function forwards the new predecessor should manage now.
+	 * 
+	 * @param predecessor
+	 * @throws RemoteException
+	 */
+	
+	public void forwardDataToPredecessor(RMINodeServer predecessor) throws RemoteException{ //predecessor is global... maybe drop argument?
+		try{
+			if(this.getNodeKey() <= predecessor.getNodeKey()){
+				for(long i = predecessor.getNodeKey(); i<this.getNodeKey(); i++){
+					predecessor.put(i, this.get(i));
+					this.delete(i);
+				}
+			}
+		}
+		catch(RemoteException r){
+			//node doesn't exist... This means the predecessor JUST crashed.
 		}
 	}
 
+	/**
+	 * When the node gracefully leaves, this puts all data to the successor, who now controls it.
+	 * 
+	 * @param successor
+	 * @throws RemoteException
+	 */
+	
+	public void forwardDataToSuccessor(RMINodeServer successor) throws RemoteException{
+		try{
+			for(Entry<Long, Serializable> entry : nodeStorage.entrySet()){
+				successor.put(entry.getKey(), entry.getValue());
+				this.delete(entry.getKey());
+			}
+		}
+		catch(RemoteException r){
+			//node doesn't exist. This means successor doesn't exist. Try next finger.
+			//fingers fix themselves so do nothing...
+		}		
+	}
+	
 	@Override
 	public void nodeLeaving(long leavingNodeKey) throws RemoteException {
 		checkHasNodeLeft();

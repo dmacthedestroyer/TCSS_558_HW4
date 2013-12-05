@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class RMINode implements RMINodeServer, RMINodeState {
 
-	private static final int WAIT_MILLIS = 100;
+	private static final int FIX_FINGER_INTERVAL = 1000;
 	private final int hashLength;
 	private final long nodeKey;
 	private FingerTable fingerTable;
@@ -31,7 +31,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 			while (!isInterrupted()) {
 				try {
 					synchronized (this) {
-						wait(1000);
+						wait(FIX_FINGER_INTERVAL);
 					}
 				} catch (InterruptedException e) {
 					break;
@@ -135,22 +135,26 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	public Serializable get(long key) throws RemoteException {
 		checkHasNodeLeft();
 
-		try {
-			RMINodeServer server = findSuccessor(key);
-			if (nodeKey == server.getNodeKey())
-				return nodeStorage.get(key);
-			else
-				return server.get(key);
-		} catch (NullPointerException | RemoteException e) {
-			// some node somewhere is dead... wait a while for our fingers to correct
-			// then try again
+		for (int i = 0; i < 10; i++) {
 			try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e1) {
-				e1.printStackTrace();
+				RMINodeServer server = findSuccessor(key);
+				if (nodeKey == server.getNodeKey())
+					return nodeStorage.get(key);
+				else
+					return server.get(key);
+			} catch (NullPointerException | RemoteException e) {
+				// some node somewhere is dead... wait a while for our fingers to
+				// correct then try again
+				try {
+					Thread.sleep(FIX_FINGER_INTERVAL);
+				} catch (InterruptedException e1) {
+					e1.printStackTrace();
+				}
 			}
-			return get(key);
 		}
+
+		// tried 10 times and failed, throw in the towel.
+		return null;
 	}
 
 	/**
@@ -189,7 +193,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 			// Network may not be stable; wait for the network to stabilize, then try
 			// again
 			try {
-				Thread.sleep(WAIT_MILLIS);
+				Thread.sleep(FIX_FINGER_INTERVAL);
 				put(hash, value);
 			} catch (InterruptedException ie) {
 				ie.printStackTrace();
@@ -225,7 +229,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 			// Network may not be stable; wait for the network to stabilize, then try
 			// again
 			try {
-				Thread.sleep(WAIT_MILLIS);
+				Thread.sleep(FIX_FINGER_INTERVAL);
 				delete(hash);
 			} catch (InterruptedException ie) {
 				ie.printStackTrace();

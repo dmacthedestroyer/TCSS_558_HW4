@@ -298,7 +298,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	}
 
 	/**
-	 * When the predecessor changes, this function forwards the new predecessor
+	 * When the predecessor changes, this function forwards values the new predecessor
 	 * should manage now.
 	 * 
 	 * @param predecessor

@@ -44,6 +44,10 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	};
 
 	public RMINode(final int hashLength, final long nodeKey) {
+		long keyspace = (1 << hashLength) - 1;
+		if(nodeKey > keyspace)
+			throw new IllegalArgumentException(String.format("nodeKey (%s) cannot exceed the max keyspace (%s)", nodeKey, keyspace));
+
 		this.hashLength = hashLength;
 		this.nodeKey = nodeKey;
 		networkRetries = hashLength + 1;

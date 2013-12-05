@@ -19,12 +19,11 @@ import chord.RMINodeServer;
  * 
  */
 public class MultiRandomNodeTest {
-
 	public static void main(String[] args) throws AlreadyBoundException, IOException {
-        if (args.length != 3) {
-            Log.err("Usage: MultiRandomNodeTest <port> <m> <node count>");
-        } else {
-            int port = Integer.parseInt(args[0]);
+		if (args.length != 3) {
+			Log.err("Usage: MultiRandomNodeTest <port> <m> <node count>");
+		} else {
+			int port = Integer.parseInt(args[0]);
 			int m = Integer.parseInt(args[1]);
 			int nodeCount = Integer.parseInt(args[2]);
 

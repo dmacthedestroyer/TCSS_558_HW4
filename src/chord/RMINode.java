@@ -18,6 +18,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	private final int networkRetries;
 	private final int hashLength;
 	private final long nodeKey;
+	private final NodeFileLogger logger;
 	private FingerTable fingerTable;
 	private final Map<Long, Serializable> nodeStorage = new ConcurrentHashMap<>();
 	private RMINodeServer predecessor;
@@ -51,6 +52,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		this.hashLength = hashLength;
 		this.nodeKey = nodeKey;
 		networkRetries = hashLength + 1;
+		logger = new NodeFileLogger(nodeKey);
 		fingerTable = new FingerTable(this.hashLength, this.nodeKey);
 		backgroundThread.start();
 	}
@@ -116,12 +118,13 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	@Override
 	public void join(RMINodeServer fromNetwork) throws RemoteException {
 		checkHasNodeLeft();
-
 		if (fromNetwork != null) {
 			fingerTable.getSuccessor().setNode(fromNetwork.findSuccessor(nodeKey));
+			logger.logOutput("Joined network");
 		} else {
 			// the network is empty
 			fingerTable.getSuccessor().setNode(this);
+			logger.logOutput("Network is empty; setting successor to self");
 		}
 	}
 
@@ -132,6 +135,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	public void leave() throws RemoteException {
 		hasNodeLeft = true;
 		forwardDataToSuccessor();
+		logger.logOutput("Left network and forwarded data to successor");
 	}
 
 	/**
@@ -147,9 +151,11 @@ public class RMINode implements RMINodeServer, RMINodeState {
 					return nodeStorage.get(key);
 				else
 					return server.get(key);
-			} catch (NullPointerException | RemoteException e	) {
+			} catch (NullPointerException | RemoteException e) {
 				// some node somewhere is dead... wait a while for our fingers to
 				// correct then try again
+				logger.logOutput("Encountered an error during retrieval with key " + key + "; " + e.getMessage());
+				logger.logOutput("Retrying...");
 				try {
 					Thread.sleep(FIX_FINGER_INTERVAL);
 				} catch (InterruptedException e1) {
@@ -157,7 +163,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 				}
 			}
 		}
-		// tried a bunch of times and failed, throw in the towel.
+		logger.logOutput("Unable to get value with key " + key + "due to errors" );
 		return null;
 	}
 
@@ -185,6 +191,8 @@ public class RMINode implements RMINodeServer, RMINodeState {
 			} catch (NullPointerException | RemoteException e	) {
 				// some node somewhere is dead... wait a while for our fingers to
 				// correct then try again
+				logger.logOutput("Encountered an error during insert with key " + key + "; " + e.getMessage());
+				logger.logOutput("Retrying...");
 				try {
 					Thread.sleep(FIX_FINGER_INTERVAL);
 				} catch (InterruptedException e1) {
@@ -219,6 +227,8 @@ public class RMINode implements RMINodeServer, RMINodeState {
 			} catch (NullPointerException | RemoteException e	) {
 				// some node somewhere is dead... wait a while for our fingers to
 				// correct then try again
+				logger.logOutput("Encountered an error during delete with key " + key + "; " + e.getMessage());
+				logger.logOutput("Retrying...");
 				try {
 					Thread.sleep(FIX_FINGER_INTERVAL);
 				} catch (InterruptedException e1) {
@@ -243,7 +253,6 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	@Override
 	public RMINodeServer findSuccessor(long key) throws RemoteException {
 		checkHasNodeLeft();
-
 		long successorNodeKey;
 		try {
 			successorNodeKey = fingerTable.getSuccessor().getNode().getNodeKey();
@@ -308,13 +317,14 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	 * @param predecessor
 	 * @throws RemoteException
 	 */
-
 	public void forwardDataToPredecessor() {
 		try {
 			long predecessorNodeKey = predecessor.getNodeKey();
 			for (Long key : nodeStorage.keySet())
-				if (ringRange.isInRange(false, nodeKey, key, predecessorNodeKey, true))
+				if (ringRange.isInRange(false, nodeKey, key, predecessorNodeKey, true)) {
 					predecessor.put(key, nodeStorage.remove(key));
+					logger.logOutput("Moving data to predecessor with key " + key);
+				}
 		} catch (RemoteException r) {
 			// node doesn't exist... This means the predecessor JUST crashed.
 			// f*$k it, let's go bowling.
@@ -345,8 +355,10 @@ public class RMINode implements RMINodeServer, RMINodeState {
 			return;
 
 		try {
-			for (Long key : nodeStorage.keySet())
+			for (Long key : nodeStorage.keySet()) {
 				successor.put(key, nodeStorage.remove(key));
+				logger.logOutput("Moving data to successor with key " + key);
+			}
 		} catch (NullPointerException | RemoteException r) {
 			// node doesn't exist, so do nothing...
 		}
@@ -362,7 +374,9 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		try {
 			if (predecessor.getNodeKey() == leavingNodeKey)
 				predecessor = null;
+			logger.logOutput("Node " + leavingNodeKey + " leaving");
 		} catch (NullPointerException | RemoteException e) {
+			logger.logOutput(e.getMessage());
 			predecessor = null;
 		}
 
@@ -371,6 +385,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 				if (f.getNode().getNodeKey() == leavingNodeKey)
 					f.setNode(f.getStart() == fingerTable.getSuccessor().getStart() ? this : null);
 			} catch (NullPointerException | RemoteException e) {
+				logger.logOutput(e.getMessage());
 				f.setNode(f.getStart() == fingerTable.getSuccessor().getStart() ? this : null);
 			}
 		}
@@ -380,6 +395,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		try {
 			f.setNode(findSuccessor(f.getStart()));
 		} catch (RemoteException e) {
+			logger.logOutput(e.getMessage());
 			f.setNode(null);
 		}
 	}
@@ -388,6 +404,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		long successorNodeKey;
 		RMINodeServer successor;
 		try {
+			logger.logOutput("Stabilizing finger table");
 			successor = fingerTable.getSuccessor().getNode();
 			successorNodeKey = successor.getNodeKey();
 		} catch (NullPointerException | RemoteException e) {

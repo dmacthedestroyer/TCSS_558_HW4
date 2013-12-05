@@ -136,7 +136,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		checkHasNodeLeft();
 		Serializable value = null;
 		RMINodeServer server = findSuccessor(key);
-		if (this.equals(server)) {
+		if (this.nodeKey == server.getNodeKey()) {
 			value = nodeStorage.get(key);
 		} else {
 			value = server.get(key);
@@ -175,7 +175,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	public void put(long key, Serializable value) throws RemoteException {
 		checkHasNodeLeft();
 		RMINodeServer server = findSuccessor(key);
-		if (this.equals(server)) {
+		if (this.nodeKey == server.getNodeKey()) {
 			nodeStorage.put(key, value);
 		} else {
 			server.put(key, value);
@@ -210,7 +210,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	public void delete(long key) throws RemoteException {
 		checkHasNodeLeft();
 		RMINodeServer server = findSuccessor(key);
-		if (this.equals(server)) {
+		if (this.nodeKey == server.getNodeKey()) {
 			nodeStorage.remove(key);
 		} else {
 			server.delete(key);
@@ -377,6 +377,10 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		} catch (RemoteException e) {
 			return false;
 		}
+	}
+	
+	public long hashCode() {
+		
 	}
 	
 }

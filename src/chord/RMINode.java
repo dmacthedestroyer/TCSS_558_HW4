@@ -134,14 +134,22 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	@Override
 	public Serializable get(long key) throws RemoteException {
 		checkHasNodeLeft();
-		Serializable value = null;
-		RMINodeServer server = findSuccessor(key);
-		if (this.nodeKey == server.getNodeKey()) {
-			value = nodeStorage.get(key);
-		} else {
-			value = server.get(key);
+		try {
+			RMINodeServer server = findSuccessor(key);
+			if (nodeKey == server.getNodeKey())
+				return nodeStorage.get(key);
+			else
+				return server.get(key);
+		} catch (NullPointerException | RemoteException e) {
+			// some node somewhere is dead... wait a while for our fingers to correct
+			// then try again
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e1) {
+				e1.printStackTrace();
+			}
+			return get(key);
 		}
-		return value;
 	}
 
 	/**
@@ -149,23 +157,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	 */
 	@Override
 	public Serializable get(String key) throws RemoteException {
-		KeyHash<String> keyHash = new KeyHash<String>(key, hashLength);
-		long hash = keyHash.getHash();
-		Serializable returnValue = null;
-		try {
-			checkHasNodeLeft();
-			returnValue = get(hash);
-		} catch (RemoteException re) {
-			// Network may not be stable
-			try {
-				// Wait for the network to stabilize, then try again
-				Thread.sleep(WAIT_MILLIS);
-				returnValue = get(hash);
-			} catch (InterruptedException ie) {
-				ie.printStackTrace();
-			}
-		}
-		return returnValue;
+		return get(new KeyHash<String>(key, hashLength).getHash());
 	}
 
 	/**
@@ -193,14 +185,15 @@ public class RMINode implements RMINodeServer, RMINodeState {
 			checkHasNodeLeft();
 			put(hash, value);
 		} catch (RemoteException re) {
-			// Network may not be stable; wait for the network to stabilize, then try again
+			// Network may not be stable; wait for the network to stabilize, then try
+			// again
 			try {
 				Thread.sleep(WAIT_MILLIS);
 				put(hash, value);
 			} catch (InterruptedException ie) {
 				ie.printStackTrace();
 			}
-		}		
+		}
 	}
 
 	/**
@@ -228,7 +221,8 @@ public class RMINode implements RMINodeServer, RMINodeState {
 			checkHasNodeLeft();
 			delete(hash);
 		} catch (RemoteException re) {
-			// Network may not be stable; wait for the network to stabilize, then try again
+			// Network may not be stable; wait for the network to stabilize, then try
+			// again
 			try {
 				Thread.sleep(WAIT_MILLIS);
 				delete(hash);
@@ -298,7 +292,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 			predecessor = potentialPredecessor;
 		}
 	}
-	
+
 	/**
 	 * {@inheritDoc}
 	 */
@@ -356,7 +350,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 			fingerTable.getSuccessor().setNode(this);
 		}
 	}
-	
+
 	/**
 	 * {@inheritDoc}
 	 */
@@ -378,9 +372,4 @@ public class RMINode implements RMINodeServer, RMINodeState {
 			return false;
 		}
 	}
-	
-	public long hashCode() {
-		
-	}
-	
 }

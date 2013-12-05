@@ -4,6 +4,10 @@ import java.io.Serializable;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import javax.swing.text.html.HTMLDocument.Iterator;
 
 /**
  * Implements a node in the Chord network.
@@ -15,6 +19,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	private final int hashLength;
 	private final long nodeKey;
 	private FingerTable fingerTable;
+    private Map<Long, Serializable> nodeStorage;
 	private RMINodeServer predecessor;
 	private boolean hasNodeLeft;
 	private final RingRange ringRange = new RingRange();
@@ -201,29 +206,44 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		}
 	}
 	
+	/**
+	 * When the predecessor changes, this function forwards the new predecessor should manage now.
+	 * 
+	 * @param predecessor
+	 * @throws RemoteException
+	 */
+	
 	public void forwardDataToPredecessor(RMINodeServer predecessor) throws RemoteException{ //predecessor is global... maybe drop argument?
 		try{
-			for (Finger f : fingerTable) {
-				if(f.getNode().getNodeKey() <= predecessor.getNodeKey()){
-					predecessor.put(f.getNode().getNodeKey(), this.get(f.getNode().getNodeKey()));
+			if(this.getNodeKey() <= predecessor.getNodeKey()){
+				for(long i = predecessor.getNodeKey(); i<this.getNodeKey(); i++){
+					predecessor.put(i, this.get(i));
+					this.delete(i);
 				}
 			}
 		}
 		catch(RemoteException r){
-			//do... what exactly?
+			//node doesn't exist... This means the predecessor JUST crashed.
 		}
 	}
 
+	/**
+	 * When the node gracefully leaves, this puts all data to the successor, who now controls it.
+	 * 
+	 * @param successor
+	 * @throws RemoteException
+	 */
+	
 	public void forwardDataToSuccessor(RMINodeServer successor) throws RemoteException{
 		try{
-			for (Finger f : fingerTable) {
-				if(f.getNode().getNodeKey() >= predecessor.getNodeKey()){
-					successor.put(f.getNode().getNodeKey(), this.get(f.getNode().getNodeKey()));
-				}
+			for(Entry<Long, Serializable> entry : nodeStorage.entrySet()){
+				successor.put(entry.getKey(), entry.getValue());
+				this.delete(entry.getKey());
 			}
 		}
 		catch(RemoteException r){
-			//do... what exactly?
+			//node doesn't exist. This means successor doesn't exist. Try next finger.
+			//fingers fix themselves so do nothing...
 		}		
 	}
 	

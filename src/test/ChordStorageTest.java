@@ -38,8 +38,8 @@ public class ChordStorageTest {
 		String key = "testKey";
 		String value = "testValue";
 		client.put(key, value);
-		String getValue = (String) client.get(key);
-		assertEquals(value, getValue);
+		String returnValue = (String) client.get(key);
+		assertEquals(value, returnValue);
 	}
 	
 	@Test
@@ -50,8 +50,8 @@ public class ChordStorageTest {
 		putClient.put(key, value);
 		RMINodeClient getClient = (RMINodeClient) registry.lookup("node1");
 		getClient.get(key);
-		String getValue = (String) putClient.get(key);
-		assertEquals(value, getValue);
+		String returnValue = (String) putClient.get(key);
+		assertEquals(value, returnValue);
 	}
 
 	@Test
@@ -61,8 +61,8 @@ public class ChordStorageTest {
 		String value = "testValue";
 		client.put(key, value);
 		client.delete(key);
-		String getValue = (String) client.get(key);
-		assertEquals(null, getValue);
+		String nullValue = (String) client.get(key);
+		assertEquals(null, nullValue);
 	}
 	
 	@Test
@@ -73,8 +73,8 @@ public class ChordStorageTest {
 		putClient.put(key, value);
 		RMINodeClient deleteClient = (RMINodeClient) registry.lookup("node1");
 		deleteClient.delete(key);
-		String getValue = (String) putClient.get(key);
-		assertEquals(null, getValue);
+		String nullValue = (String) putClient.get(key);
+		assertEquals(null, nullValue);
 	}
 
 }

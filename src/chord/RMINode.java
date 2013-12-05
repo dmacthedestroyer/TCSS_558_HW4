@@ -4,6 +4,8 @@ import java.io.Serializable;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Implements a node in the Chord network.
@@ -15,6 +17,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	private final int hashLength;
 	private final long nodeKey;
 	private FingerTable fingerTable;
+	private Map<Long, Serializable> nodeStorage;
 	private RMINodeServer predecessor;
 	private boolean hasNodeLeft;
 	private final RingRange ringRange = new RingRange();
@@ -41,8 +44,8 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	public RMINode(final int hashLength, final long nodeKey) {
 		this.hashLength = hashLength;
 		this.nodeKey = nodeKey;
+		this.nodeStorage = new ConcurrentHashMap<>();
 		fingerTable = new FingerTable(this.hashLength, this.nodeKey);
-
 		backgroundThread.start();
 	}
 
@@ -107,42 +110,60 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	@Override
 	public Serializable get(long key) throws RemoteException {
 		checkHasNodeLeft();
-
-		// TODO Auto-generated method stub
-		return null;
+		Serializable value = null;
+		RMINodeServer server = findSuccessor(key);
+		if (this.equals(server)) {
+			value = nodeStorage.get(key);
+		} else {
+			value = server.get(key);
+		}
+		return value;
 	}
 
 	@Override
 	public Serializable get(String key) throws RemoteException {
 		checkHasNodeLeft();
-
-		// TODO Auto-generated method stub
-		return null;
+		KeyHash<String> keyHash = new KeyHash<String>(key, hashLength);
+		long hash = keyHash.getHash();
+		return get(hash);
 	}
 
 	@Override
 	public void put(long key, Serializable value) throws RemoteException {
-
-		// TODO Auto-generated method stub
-
+		checkHasNodeLeft();
+		RMINodeServer server = findSuccessor(key);
+		if (this.equals(server)) {
+			nodeStorage.put(key, value);
+		} else {
+			server.put(key, value);
+		}
 	}
 
 	@Override
 	public void put(String key, Serializable value) throws RemoteException {
-		// TODO Auto-generated method stub
-
+		checkHasNodeLeft();
+		KeyHash<String> keyHash = new KeyHash<String>(key, hashLength);
+		long hash = keyHash.getHash();
+		put(hash, value);
 	}
 
 	@Override
 	public void delete(long key) throws RemoteException {
-		// TODO Auto-generated method stub
-
+		checkHasNodeLeft();
+		RMINodeServer server = findSuccessor(key);
+		if (this.equals(server)) {
+			nodeStorage.remove(key);
+		} else {
+			server.delete(key);
+		}
 	}
 
 	@Override
 	public void delete(String key) throws RemoteException {
-		// TODO Auto-generated method stub
-
+		checkHasNodeLeft();
+		KeyHash<String> keyHash = new KeyHash<String>(key, hashLength);
+		long hash = keyHash.getHash();
+		delete(hash);
 	}
 
 	@Override

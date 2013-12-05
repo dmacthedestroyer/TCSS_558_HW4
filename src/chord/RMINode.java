@@ -102,6 +102,7 @@ public class RMINode implements RMINodeServer, RMINodeState {
 	@Override
 	public void leave() throws RemoteException {
 		hasNodeLeft = true;
+		forwardDataToSuccessor(fingerTable.getSuccessor().getNode());
 	}
 
 	@Override
@@ -193,21 +194,39 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		try {
 			if (ringRange.isInRange(false, predecessor.getNodeKey(), potentialPredecessorNodeKey, nodeKey, false))
 				predecessor = potentialPredecessor;
-				for (Finger f : fingerTable) {
-					if(f.getNode().getNodeKey() <= predecessor.getNodeKey()){
-						predecessor.put(f.getNode().getNodeKey(), this.get(f.getNode().getNodeKey()));
-					}
-				}
+				forwardDataToPredecessor(predecessor);
 		} catch (NullPointerException | RemoteException e) {
+			predecessor = potentialPredecessor;
+			forwardDataToPredecessor(predecessor);
+		}
+	}
+	
+	public void forwardDataToPredecessor(RMINodeServer predecessor) throws RemoteException{ //predecessor is global... maybe drop argument?
+		try{
 			for (Finger f : fingerTable) {
 				if(f.getNode().getNodeKey() <= predecessor.getNodeKey()){
 					predecessor.put(f.getNode().getNodeKey(), this.get(f.getNode().getNodeKey()));
 				}
 			}
-			predecessor = potentialPredecessor;
+		}
+		catch(RemoteException r){
+			//do... what exactly?
 		}
 	}
 
+	public void forwardDataToSuccessor(RMINodeServer successor) throws RemoteException{
+		try{
+			for (Finger f : fingerTable) {
+				if(f.getNode().getNodeKey() >= predecessor.getNodeKey()){
+					successor.put(f.getNode().getNodeKey(), this.get(f.getNode().getNodeKey()));
+				}
+			}
+		}
+		catch(RemoteException r){
+			//do... what exactly?
+		}		
+	}
+	
 	@Override
 	public void nodeLeaving(long leavingNodeKey) throws RemoteException {
 		checkHasNodeLeft();

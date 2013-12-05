@@ -193,7 +193,17 @@ public class RMINode implements RMINodeServer, RMINodeState {
 		try {
 			if (ringRange.isInRange(false, predecessor.getNodeKey(), potentialPredecessorNodeKey, nodeKey, false))
 				predecessor = potentialPredecessor;
+				for (Finger f : fingerTable) {
+					if(f.getNode().getNodeKey() <= predecessor.getNodeKey()){
+						predecessor.put(f.getNode().getNodeKey(), this.get(f.getNode().getNodeKey()));
+					}
+				}
 		} catch (NullPointerException | RemoteException e) {
+			for (Finger f : fingerTable) {
+				if(f.getNode().getNodeKey() <= predecessor.getNodeKey()){
+					predecessor.put(f.getNode().getNodeKey(), this.get(f.getNode().getNodeKey()));
+				}
+			}
 			predecessor = potentialPredecessor;
 		}
 	}
